@@ -57,20 +57,24 @@ class RecordingStorage:
             try:
                 parent.mkdir(parents=True, exist_ok=True)
             except OSError as error:
-                raise OutputPathError("Output directory could not be created.") from error
+                raise OutputPathError(
+                    "Output directory could not be created."
+                ) from error
         if not parent.is_dir():
             raise OutputPathError("Output parent is not a directory.")
         if path.exists() and not overwrite:
             raise OutputPathError("Output file already exists.")
 
-    def commit(
-        self, source: Path, destination: Path, overwrite: bool
-    ) -> None:
+    def commit(self, source: Path, destination: Path, overwrite: bool) -> None:
         if not source.is_file():
             raise SaveError("Temporary recording is missing.")
         staging: Path | None = None
         try:
-            descriptor, name = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent)
+            descriptor, name = tempfile.mkstemp(
+                prefix=f".{destination.name}.",
+                suffix=".tmp",
+                dir=destination.parent,
+            )
             os.close(descriptor)
             staging = Path(name)
             shutil.copyfile(source, staging)

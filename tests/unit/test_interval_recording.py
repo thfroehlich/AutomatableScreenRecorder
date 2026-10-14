@@ -18,12 +18,12 @@ class FakeBackend:
         self.stop_count = 0
 
     def command(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> list[str]:
         return ["fake", "-an", str(target)]
 
     def start(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> None:
         del config, display
         self.start_count += 1
@@ -37,7 +37,7 @@ class FakeBackend:
         del timeout
 
     def concatenate(
-            self, config: RecordingConfig, segments: list[Path], target: Path
+        self, config: RecordingConfig, segments: list[Path], target: Path
     ) -> None:
         del config
         target.write_bytes(b"|".join(path.read_bytes() for path in segments))

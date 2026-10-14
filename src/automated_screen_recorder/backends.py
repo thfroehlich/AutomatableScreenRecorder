@@ -51,9 +51,7 @@ class FfmpegBackend:
         environment = os.environ.get("AUTOSCREENREC_FFMPEG")
         candidates = [
             configured,
-            Path(environment)
-            if environment
-            else None,
+            Path(environment) if environment else None,
             Path.cwd() / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe",
         ]
         discovered = shutil.which("ffmpeg.exe") or shutil.which("ffmpeg")
@@ -61,7 +59,9 @@ class FfmpegBackend:
         for candidate in candidates:
             if candidate is not None and candidate.is_file():
                 return candidate.resolve()
-        raise ExternalProcessError("FFmpeg was not found. Configure ffmpeg_path or AUTOSCREENREC_FFMPEG.")
+        raise ExternalProcessError(
+            "FFmpeg was not found. Configure ffmpeg_path or AUTOSCREENREC_FFMPEG."
+        )
 
     @staticmethod
     def validate_version(path: Path) -> str:
@@ -194,7 +194,7 @@ class FfmpegBackend:
         manifest = target.with_suffix(".concat.txt")
         manifest.write_text(
             "".join(f"file '{segment.resolve().as_posix()}'\n" for segment in segments),
-            encoding="utf-8"
+            encoding="utf-8",
         )
         try:
             result = subprocess.run(
@@ -257,7 +257,10 @@ class FfmpegBackend:
             return "no diagnostic output"
         self._stderr.flush()
         self._stderr.seek(0)
-        return self._stderr.read().decode("utf-8", errors="replace").strip()[-1000:] or "no diagnostic output"
+        return (
+            self._stderr.read().decode("utf-8", errors="replace").strip()[-1000:]
+            or "no diagnostic output"
+        )
 
     def _close_stderr(self) -> None:
         if self._stderr is not None:

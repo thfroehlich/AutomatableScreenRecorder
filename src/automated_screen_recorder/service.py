@@ -264,8 +264,8 @@ class ScreenRecorder:
                 return
             with self._lock:
                 if (
-                        self._machine.state is not RecordingState.RECORDING
-                        or self._next_interval_deadline != deadline
+                    self._machine.state is not RecordingState.RECORDING
+                    or self._next_interval_deadline != deadline
                 ):
                     continue
                 try:
