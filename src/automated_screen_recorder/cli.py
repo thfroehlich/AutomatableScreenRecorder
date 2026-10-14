@@ -22,7 +22,8 @@ def main() -> None:
     with ScreenRecorder() as recorder:
         recorder.start_recording(config)
         try:
-            while True: time.sleep(1)
+            while True:
+                time.sleep(1)
         except KeyboardInterrupt:
             recorder.stop_recording()
             result = recorder.save_recording()

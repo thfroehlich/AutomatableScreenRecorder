@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from automated_screen_recorder import RecordingConfig, ScreenRecorder
+from automated_screen_recorder import (
+    RecordingConfig,
+    ScreenRecorder)
 
 
 @pytest.mark.windows_desktop

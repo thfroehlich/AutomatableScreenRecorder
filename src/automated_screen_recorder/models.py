@@ -66,7 +66,7 @@ class RecordingConfig(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_dimensions_and_suffix(self) -> "RecordingConfig":
+    def validate_dimensions_and_suffix(self) -> RecordingConfig:
         if (self.width is None) != (self.height is None):
             raise ValueError("Width and height must be provided together.")
         if self.output_path.suffix.lower() != f".{self.output_format.value}":

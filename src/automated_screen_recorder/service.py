@@ -10,8 +10,12 @@ from pathlib import Path
 
 from automated_screen_recorder.backends import CaptureProcess, FfmpegBackend
 from automated_screen_recorder.exceptions import DisplayUnavailableError, RecordingError
-from automated_screen_recorder.models import (DisplayInfo, RecordingConfig, RecordingResult, RecordingState,
-                                              RecordingStatus)
+from automated_screen_recorder.models import (
+    DisplayInfo,
+    RecordingConfig,
+    RecordingResult,
+    RecordingState,
+    RecordingStatus)
 from automated_screen_recorder.platform_windows import enumerate_displays
 from automated_screen_recorder.state import RecordingStateMachine
 from automated_screen_recorder.storage import RecordingStorage
@@ -35,7 +39,7 @@ class ScreenRecorder:
         self._elapsed = 0.0
         self._error: str | None = None
 
-    def __enter__(self) -> "ScreenRecorder":
+    def __enter__(self) -> ScreenRecorder:
         return self
 
     def __exit__(self, *_args: object) -> None:
@@ -51,9 +55,11 @@ class ScreenRecorder:
             if self._machine.state in {RecordingState.SAVED, RecordingState.CANCELLED,
                                        RecordingState.FAILED}:
                 self._machine.reset()
-            self._storage.validate_destination(config.output_path, config.overwrite, config.create_output_directory)
+            self._storage.validate_destination(
+                config.output_path, config.overwrite, config.create_output_directory)
             displays = self.enumerate_displays()
-            if config.display_index >= len(displays): raise DisplayUnavailableError("Selected display is unavailable.")
+            if config.display_index >= len(displays):
+                raise DisplayUnavailableError("Selected display is unavailable.")
             self._session_id = str(uuid.uuid4())
             self._config = config
             self._temporary = self._storage.create(f".{config.output_format.value}")
@@ -120,13 +126,18 @@ class ScreenRecorder:
         with self._lock:
             config = self._require_config()
             destination = output_path or config.output_path
-            self._storage.validate_destination(destination, config.overwrite, config.create_output_directory)
+            self._storage.validate_destination(
+                destination, config.overwrite, config.create_output_directory)
             self._storage.save(self._require_temp(), destination, config.overwrite)
             self._temporary = None
             self._machine.transition(RecordingState.SAVED)
-            result = RecordingResult(session_id=self._session_id or "", output_path=destination,
-                                     duration_seconds=self._elapsed, file_size_bytes=destination.stat().st_size,
-                                     codec=config.codec)
+            result = RecordingResult(
+                session_id=self._session_id or "",
+                output_path=destination,
+                file_size_bytes=destination.stat().st_size,
+                codec=config.codec,
+                duration_seconds=self._elapsed + self._running_elapsed(),
+            )
             LOGGER.info("Recording saved", extra=self._context("save"))
             return result
 
@@ -164,5 +175,9 @@ class ScreenRecorder:
         self._storage.cleanup()
 
     def _context(self, operation: str) -> dict[str, object]:
-        return {"session_id": self._session_id, "state": self._machine.state.value,
-                "backend": type(self._backend).__name__, "operation": operation}
+        return {
+            "session_id": self._session_id,
+            "state": self._machine.state.value,
+            "backend": type(self._backend).__name__,
+            "operation": operation,
+        }

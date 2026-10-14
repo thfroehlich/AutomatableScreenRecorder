@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Local, video-only Windows screen recording with a stable Python API"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {file = "LICENSE"}
-authors = [{name = "Automated Screen Recorder contributors"}]
+license = { file = "LICENSE" }
+authors = [{ name = "Automated Screen Recorder contributors" }]
 dependencies = [
     "fastapi>=0.143.0",
     "pydantic>=2.10,<3",
@@ -30,18 +30,23 @@ autoscreenrec-benchmark = "automated_screen_recorder.benchmark:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/automated_screen_recorder"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
 packages = ["automated_screen_recorder"]
+
 [[tool.mypy.overrides]]
 module = ["psutil"]
 ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
 testpaths = ["tests"]

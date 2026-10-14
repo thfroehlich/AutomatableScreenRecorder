@@ -4,9 +4,13 @@ from __future__ import annotations
 import argparse
 import threading
 from collections import OrderedDict
-from typing import Callable
+from collections.abc import Callable
 
-from automated_screen_recorder.models import ControlRequest, ErrorResponse, SaveRequest, StartRequest
+from automated_screen_recorder.models import (
+    ControlRequest,
+    ErrorResponse,
+    SaveRequest,
+    StartRequest)
 from automated_screen_recorder.service import ScreenRecorder
 
 

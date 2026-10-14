@@ -1,7 +1,9 @@
 from unittest.mock import patch
 
 from automated_screen_recorder.backends import FfmpegBackend
-from automated_screen_recorder.models import DisplayInfo, RecordingConfig
+from automated_screen_recorder.models import (
+    DisplayInfo,
+    RecordingConfig)
 
 
 def test_command_has_no_audio_and_no_shell(tmp_path):

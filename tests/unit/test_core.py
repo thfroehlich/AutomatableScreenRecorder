@@ -3,8 +3,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from automated_screen_recorder import RecordingConfig, RecordingState, ScreenRecorder
-from automated_screen_recorder.exceptions import InvalidStateTransitionError, OutputPathError
+from automated_screen_recorder import (
+    RecordingConfig,
+    RecordingState,
+    ScreenRecorder)
+from automated_screen_recorder.exceptions import (
+    InvalidStateTransitionError,
+    OutputPathError)
 
 
 class FakeBackend:

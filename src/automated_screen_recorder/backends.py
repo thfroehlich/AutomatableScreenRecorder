@@ -69,14 +69,19 @@ class FfmpegBackend:
         return command
 
     def start(self, config: RecordingConfig, display: DisplayInfo, target: Path) -> None:
-        self._process = subprocess.Popen(self.command(config, display, target), stdin=subprocess.PIPE,
-                                         stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=False)
+        self._process = subprocess.Popen(
+            self.command(config, display, target),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            shell=False)
         if self._process.poll() is not None:
             raise ExternalProcessError("FFmpeg terminated during startup.")
 
     def stop(self, timeout: float) -> None:
         process = self._require()
-        if process.stdin: process.stdin.write(b"q\n")
+        if process.stdin:
+            process.stdin.write(b"q\n")
         process.stdin.flush()
         self._wait(process, timeout, False)
         if process.returncode:
@@ -104,4 +109,4 @@ class FfmpegBackend:
             process.kill()
             process.wait(timeout=5)
             if not allow_nonzero:
-                raise ExternalProcessError("FFmpeg did not stop within the configured timeout.")
+                raise ExternalProcessError("FFmpeg did not stop within the configured timeout.") from None
