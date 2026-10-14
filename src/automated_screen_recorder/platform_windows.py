@@ -71,13 +71,9 @@ def enumerate_displays() -> list[DisplayInfo]:
         callback_function,
         0,
     ):
-        raise DisplayUnavailableError(
-            "Windows display enumeration failed."
-        )
+        raise DisplayUnavailableError("Windows display enumeration failed.")
 
     if not displays:
-        raise DisplayUnavailableError(
-            "No active display was found."
-        )
+        raise DisplayUnavailableError("No active display was found.")
 
     return displays
