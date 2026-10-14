@@ -100,12 +100,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade -e ".[dev,http]"
 
-      - name: Show packaging tool versions
+      - name: Verify packaging tool versions
+        shell: pwsh
         run: |
           python -m build --version
           python -m twine --version
           python -c "from importlib.metadata import version; print('pkginfo:', version('pkginfo'))"
-          python -c "from importlib.metadata import version; print('hatchling:', version('hatchling'))"
+          python -c "from importlib.metadata import version; from packaging.version import Version; installed = Version(version('twine')); assert installed >= Version('7.0'), f'Twine 7 or newer is required, found {installed}'"
+          python -c "from importlib.metadata import version; from packaging.version import Version; installed = Version(version('pkginfo')); assert installed >= Version('1.13'), f'pkginfo 1.13 or newer is required, found {installed}'"
 
       - name: Remove previous build artifacts
         shell: pwsh
