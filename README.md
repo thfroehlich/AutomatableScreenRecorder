@@ -1,4 +1,4 @@
-# Win Screen Recorder
+# Automated Screen Recorder
 
 A local, video-only Windows 10/11 screen recorder for Python 3.11+. It never requests an audio, microphone, camera, telemetry, or cloud input.
 
@@ -17,13 +17,13 @@ py -3.11 -m pip install .
 py -3.11 -m pip install ".[http]"
 ```
 
-FFmpeg is required at runtime. Set `ffmpeg_path` explicitly, set `WINSCREENREC_FFMPEG`, place an executable at `tools/ffmpeg/bin/ffmpeg.exe`, or use PATH only as a final convenience fallback. The executable is validated with `ffmpeg -version`. The project does not silently download tools at runtime. A redistribution must follow the license of its exact FFmpeg build; FFmpeg is normally LGPL 2.1-or-later, while optional GPL components make the build GPL. If unavailable, start raises `ExternalProcessError` without creating a final file.
+FFmpeg is required at runtime. Set `ffmpeg_path` explicitly, set `AUTOSCREENREC_FFMPEG`, place an executable at `tools/ffmpeg/bin/ffmpeg.exe`, or use PATH only as a final convenience fallback. The executable is validated with `ffmpeg -version`. The project does not silently download tools at runtime. A redistribution must follow the license of its exact FFmpeg build; FFmpeg is normally LGPL 2.1-or-later, while optional GPL components make the build GPL. If unavailable, start raises `ExternalProcessError` without creating a final file.
 
 ## Python API quick start and lifecycle
 
 ```python
 from pathlib import Path
-from win_screen_recorder import RecordingConfig, ScreenRecorder
+from automated_screen_recorder import RecordingConfig, ScreenRecorder
 
 config = RecordingConfig(output_path=Path(r"C:\Recordings\demo.mp4"), create_output_directory=True)
 with ScreenRecorder() as recorder:
@@ -43,14 +43,14 @@ Call `cancel_recording()` instead of stop/save to terminate the helper and delet
 The server is optional and disabled until launched.
 
 ```powershell
-winscreenrec-http --host 127.0.0.1 --port 8765
+autoscreenrec-http --host 127.0.0.1 --port 8765
 ```
 
 POST `/recordings/start`, `/pause`, `/resume`, `/stop`, `/cancel`, and `/save`; GET `/recordings/status` and `/displays`. Every mutation requires a unique `request_id`; the bounded cache returns the first result for duplicates. FastAPI supplies OpenAPI at `/docs`. Binding beyond loopback is explicit and should be protected by OS controls because this adapter provides no authentication.
 
 ## Logging and performance
 
-The library uses standard `logging` and never configures the root logger. Lifecycle entries include session, state, backend, and operation; no frame is logged. Lower FPS or resolution to reduce load. Python holds no frame queue because FFmpeg captures and encodes directly. Run `winscreenrec-benchmark C:\Recordings\bench.mp4 --duration 30 --fps 30`; unavailable measurements are JSON `null`, never estimates.
+The library uses standard `logging` and never configures the root logger. Lifecycle entries include session, state, backend, and operation; no frame is logged. Lower FPS or resolution to reduce load. Python holds no frame queue because FFmpeg captures and encodes directly. Run `autoscreenrec-benchmark C:\Recordings\bench.mp4 --duration 30 --fps 30`; unavailable measurements are JSON `null`, never estimates.
 
 ## Configuration reference
 
@@ -67,7 +67,7 @@ pytest
 ./scripts/build.ps1
 ```
 
-Unit tests use no display. `windows_desktop` integration tests are skipped unless Windows, an interactive desktop, and `WINSCREENREC_RUN_DESKTOP_TESTS=1` are present. GitHub Actions checks Python 3.11-3.13 on Windows, coverage, distributions, wheel installation, and a PyInstaller executable artifact.
+Unit tests use no display. `windows_desktop` integration tests are skipped unless Windows, an interactive desktop, and `AUTOSCREENREC_RUN_DESKTOP_TESTS=1` are present. GitHub Actions checks Python 3.11-3.13 on Windows, coverage, distributions, wheel installation, and a PyInstaller executable artifact.
 
 ## Privacy, troubleshooting, and limitations
 

@@ -36,7 +36,7 @@ class FfmpegBackend:
     @staticmethod
     def discover(configured: Path | None) -> Path:
         candidates = [configured,
-                      Path(os.environ["WINSCREENREC_FFMPEG"]) if "WINSCREENREC_FFMPEG" in os.environ else None,
+                      Path(os.environ["AUTOSCREENREC_FFMPEG"]) if "AUTOSCREENREC_FFMPEG" in os.environ else None,
                       Path.cwd() / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe"]
         found = shutil.which("ffmpeg.exe")
         if found: candidates.append(Path(found))

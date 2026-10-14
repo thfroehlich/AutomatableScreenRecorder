@@ -14,7 +14,7 @@ class RecordingStorage:
 
     def create(self, suffix: str) -> Path:
         self.cleanup()
-        self._directory = Path(tempfile.mkdtemp(prefix="winscreenrec-"))
+        self._directory = Path(tempfile.mkdtemp(prefix="autoscreenrec-"))
         return self._directory / f"capture{suffix}"
 
     def validate_destination(self, path: Path, overwrite: bool, create_directory: bool) -> None:
