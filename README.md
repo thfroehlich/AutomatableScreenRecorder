@@ -1,80 +1,421 @@
 # Automated Screen Recorder
 
-A local, video-only Windows 10/11 screen recorder for Python 3.11+. It never requests an audio, microphone, camera, telemetry, or cloud input.
+A local, video-only screen recorder for Windows 10/11 and Python 3.11 or newer. The recorder is designed for automation, predictable lifecycle control, local processing, and low integration overhead.
 
-## Features and non-goals
+> **Privacy by design:** normal recording captures screen pixels only. The project does not intentionally request microphone, camera, telemetry, cloud storage, or network services.
 
-The package provides a thread-safe Python facade, explicit state machine, monitor selection, pause/resume, atomic save behavior, optional localhost FastAPI adapter, deterministic fake-backend tests, and Windows packaging. It is not a streamer, editor, audio recorder, or remote service.
+## Highlights
 
-## Architecture
+- Stable, thread-safe Python API
+- Optional localhost HTTP API
+- Primary or selected-display capture
+- Configurable frame rate, resolution, container, and video codec
+- Explicit start, pause, resume, stop, cancel, and save lifecycle
+- Optional interval saving into independently playable numbered files
+- Local FFmpeg capture and encoding with no audio stream
+- Deterministic fake-backend tests plus opt-in Windows desktop integration tests
 
-`ScreenRecorder` serializes commands with an `RLock`. `FfmpegBackend` launches one argument-list subprocess with `shell=False`; FFmpeg `gdigrab` captures the chosen monitor rectangle and encodes directly, with `-an` guaranteeing no audio input or stream. Frames are not buffered in Python. Pause finalizes capture; resume starts capture again. This initial release uses one temporary output and therefore pause/resume support depends on the selected FFmpeg container accepting continuation. See `docs/architecture.md` for constraints.
+## Requirements
+
+- Windows 10 or Windows 11
+- Python 3.11 or newer
+- FFmpeg available locally
 
 ## Installation
 
+### Install the Python package
+
+Core package:
+
 ```powershell
 py -3.11 -m pip install .
+```
+
+With the optional local HTTP API:
+
+```powershell
 py -3.11 -m pip install ".[http]"
 ```
 
-FFmpeg is required at runtime. Set `ffmpeg_path` explicitly, set `AUTOSCREENREC_FFMPEG`, place an executable at `tools/ffmpeg/bin/ffmpeg.exe`, or use PATH only as a final convenience fallback. The executable is validated with `ffmpeg -version`. The project does not silently download tools at runtime. A redistribution must follow the license of its exact FFmpeg build; FFmpeg is normally LGPL 2.1-or-later, while optional GPL components make the build GPL. If unavailable, start raises `ExternalProcessError` without creating a final file.
+For development:
 
-## Python API quick start and lifecycle
+```powershell
+py -3.11 -m pip install -e ".[dev,http]"
+```
+
+## Installing FFmpeg on Windows
+
+FFmpeg itself publishes source code. The official FFmpeg download page links to third-party providers of ready-to-run Windows builds, including **gyan.dev** and **BtbN**. Always review the license of the exact build you redistribute. The recorder does not download FFmpeg during normal operation.
+
+### Option A: Install with WinGet
+
+The Windows builds page linked by FFmpeg documents WinGet packages. One documented option is the Essentials build:
+
+```powershell
+winget install "FFmpeg (Essentials Build)"
+```
+
+A full build is also listed:
+
+```powershell
+winget install ffmpeg
+```
+
+After installation, open a new terminal and verify:
+
+```powershell
+ffmpeg -version
+```
+
+### Option B: Install with Chocolatey
+
+The same Windows builds provider documents:
+
+```powershell
+choco install ffmpeg
+```
+
+Then verify:
+
+```powershell
+ffmpeg -version
+```
+
+### Option C: Install with Scoop
+
+A documented Essentials package is:
+
+```powershell
+scoop install ffmpeg-essentials
+```
+
+Then verify:
+
+```powershell
+ffmpeg -version
+```
+
+### Option D: Use a downloaded Windows build without modifying PATH
+
+1. Open the official FFmpeg download page: `https://ffmpeg.org/download.html`.
+2. Follow one of the linked Windows-build providers.
+3. Download and extract the selected build.
+4. Locate `ffmpeg.exe` inside the extracted `bin` directory.
+5. Either configure its absolute path in Python or place the executable at the repository-local location `tools/ffmpeg/bin/ffmpeg.exe`.
+
+Explicit configuration is the most deterministic approach:
 
 ```python
 from pathlib import Path
+
+from automated_screen_recorder import RecordingConfig
+
+config = RecordingConfig(
+    output_path=Path(r"C:\Recordings\demo.mp4"),
+    ffmpeg_path=Path(r"C:\Tools\ffmpeg\bin\ffmpeg.exe"),
+)
+```
+
+Alternatively, set the environment variable used by the recorder:
+
+```powershell
+$env:AUTOSCREENREC_FFMPEG = "C:\Tools\ffmpeg\bin\ffmpeg.exe"
+```
+
+### FFmpeg discovery order
+
+The recorder searches for FFmpeg in this order:
+
+1. `RecordingConfig.ffmpeg_path`
+2. `AUTOSCREENREC_FFMPEG`
+3. `tools/ffmpeg/bin/ffmpeg.exe`
+4. the process `PATH`
+
+The discovered executable is validated with:
+
+```powershell
+ffmpeg -version
+```
+
+If FFmpeg cannot be found or validated, recording startup fails instead of silently downloading another executable.
+
+## Quick start
+
+```python
+from pathlib import Path
+
 from automated_screen_recorder import RecordingConfig, ScreenRecorder
 
 config = RecordingConfig(
-    output_path=Path(r"C:\Recordings\demo.mp4"), create_output_directory=True
+    output_path=Path(r"C:\Recordings\demo.mp4"),
+    create_output_directory=True,
 )
+
 with ScreenRecorder() as recorder:
-    print(recorder.enumerate_displays())
     recorder.start_recording(config)
     recorder.pause_recording()
     recorder.resume_recording()
     recorder.stop_recording()
     result = recorder.save_recording()
-    print(result)
+
+print(result.output_path)
 ```
 
-Call `cancel_recording()` instead of stop/save to terminate the helper and delete temporary artifacts. `get_status()` is safe from another thread. Invalid transitions raise `InvalidStateTransitionError`; operational failures preserve the original exception as `__cause__`. Select a monitor with `display_index`, frame rate with `frame_rate`, and optional aspect-preserving letterboxed size with `width` plus `height`. Formats are MP4/MKV; codecs are software H.264, NVENC, and QSV where the installed FFmpeg build and hardware support them. `overwrite` defaults to false. Missing output directories are created only when `create_output_directory=True`.
+Pause finalizes the active temporary segment. Resume starts a new segment. Saving joins pending segments using the encoding backend without buffering captured frames in Python.
 
-## HTTP API
+## Optional interval saving
 
-The server is optional and disabled until launched.
+Set `save_interval_seconds` to periodically commit independently playable numbered files. Leave the value as `None` to keep normal single-output behavior.
+
+```python
+from pathlib import Path
+import time
+
+from automated_screen_recorder import RecordingConfig, ScreenRecorder
+
+config = RecordingConfig(
+    output_path=Path(r"C:\Recordings\session.mp4"),
+    save_interval_seconds=300.0,
+    create_output_directory=True,
+)
+
+with ScreenRecorder() as recorder:
+    recorder.start_recording(config)
+    time.sleep(900)
+    recorder.stop_recording()
+    result = recorder.save_recording()
+
+for output_path in result.output_paths:
+    print(output_path)
+```
+
+Example output names:
+
+```text
+session.part000001.mp4
+session.part000002.mp4
+session.part000003.mp4
+```
+
+### Interval behavior
+
+- Allowed interval: 0.1 through 86,400 seconds.
+- Pause suspends interval timing; resume begins a new interval.
+- Rotation finalizes the active segment, commits the completed file, and starts the next segment.
+- `RecordingStatus.saved_output_paths` lists committed interval files.
+- `RecordingStatus.next_interval_save_in_seconds` reports the current countdown while recording.
+- `RecordingResult.output_paths` lists all committed outputs from the session.
+- `RecordingResult.output_path` identifies the last committed output.
+- Existing numbered files block the corresponding save unless `overwrite=True`.
+- Already committed interval files remain on disk when a later recording is cancelled.
+
+Interval boundaries include FFmpeg finalization and restart overhead. Benchmark the intended interval on the target Windows system before production use.
+
+## CLI
+
+### Single output
+
+```powershell
+autoscreenrec C:\Recordings\demo.mp4 --fps 30
+```
+
+### Five-minute interval outputs
+
+```powershell
+autoscreenrec C:\Recordings\demo.mp4 `
+  --fps 30 `
+  --save-interval 300 `
+  --create-output-directory
+```
+
+Press `Ctrl+C` to stop capture and save remaining finalized data.
+
+## Local HTTP API
+
+The HTTP adapter is disabled until explicitly started and binds to loopback by default:
 
 ```powershell
 autoscreenrec-http --host 127.0.0.1 --port 8765
 ```
 
-POST `/recordings/start`, `/pause`, `/resume`, `/stop`, `/cancel`, and `/save`; GET `/recordings/status` and `/displays`. Every mutation requires a unique `request_id`; the bounded cache returns the first result for duplicates. FastAPI supplies OpenAPI at `/docs`. Binding beyond loopback is explicit and should be protected by OS controls because this adapter provides no authentication.
+Available operations:
 
-## Logging and performance
+- `POST /recordings/start`
+- `POST /recordings/pause`
+- `POST /recordings/resume`
+- `POST /recordings/stop`
+- `POST /recordings/cancel`
+- `POST /recordings/save`
+- `GET /recordings/status`
+- `GET /displays`
 
-The library uses standard `logging` and never configures the root logger. Lifecycle entries include session, state, backend, and operation; no frame is logged. Lower FPS or resolution to reduce load. Python holds no frame queue because FFmpeg captures and encodes directly. Run `autoscreenrec-benchmark C:\Recordings\bench.mp4 --duration 30 --fps 30`; unavailable measurements are JSON `null`, never estimates.
+`POST /recordings/start` accepts the complete `RecordingConfig`, including `save_interval_seconds`. State-changing requests use a `request_id` for duplicate-execution protection.
 
 ## Configuration reference
 
-`RecordingConfig`: absolute `output_path`; `display_index`; `frame_rate` 1..120; paired `width`/`height`; `output_format`; `codec`; `overwrite`; `create_output_directory`; optional `ffmpeg_path`; `encoder_preset`; and `stop_timeout_seconds`. Paths use `pathlib.Path`.
+`RecordingConfig` includes:
 
-## Testing and builds
+| Setting | Purpose |
+|---|---|
+| `output_path` | Absolute base output path |
+| `display_index` | Selected display index, default `0` |
+| `frame_rate` | Requested frame rate, `1` through `120` |
+| `width`, `height` | Optional paired output dimensions |
+| `output_format` | `mp4` or `mkv` |
+| `codec` | `libx264`, `h264_nvenc`, or `h264_qsv` |
+| `overwrite` | Permit replacement of existing output targets |
+| `create_output_directory` | Create a missing parent directory |
+| `ffmpeg_path` | Explicit local FFmpeg executable |
+| `encoder_preset` | FFmpeg encoder preset |
+| `stop_timeout_seconds` | Graceful helper-process shutdown timeout |
+| `save_interval_seconds` | Optional interval-output rotation |
+
+## Display enumeration
+
+```python
+from automated_screen_recorder import ScreenRecorder
+
+with ScreenRecorder() as recorder:
+    for display in recorder.enumerate_displays():
+        print(display)
+```
+
+Choose another monitor with `display_index` in `RecordingConfig`.
+
+## Logging
+
+The package uses the standard `logging` module and does not configure the root logger on import.
+
+Example application configuration:
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+```
+
+Lifecycle log context includes session ID, recording state, backend, and operation. Interval commits use operation `interval_save`. No per-frame logging is performed.
+
+## Performance and reliability
+
+FFmpeg handles capture and encoding directly, so Python does not store video frames in a queue. The interval worker waits on an event instead of busy-waiting.
+
+Ways to reduce resource use:
+
+- lower `frame_rate`;
+- reduce `width` and `height`;
+- select a suitable encoder and preset;
+- use interval saving only when periodic durable output is required;
+- benchmark on the intended hardware before choosing production settings.
+
+Benchmark examples:
+
+```powershell
+autoscreenrec-benchmark C:\Recordings\bench.mp4 --duration 30 --fps 30
+```
+
+```powershell
+autoscreenrec-benchmark C:\Recordings\bench.mp4 `
+  --duration 300 `
+  --save-interval 60
+```
+
+Unavailable measurements are represented as JSON `null`, not invented values.
+
+## Privacy and security
+
+- Normal recording processing is local.
+- Capture uses screen content only.
+- FFmpeg capture and concatenation are configured without audio output.
+- External commands use argument lists rather than `shell=True`.
+- The optional HTTP adapter is intended for localhost by default.
+- Recordings can contain sensitive visible information; callers are responsible for destination permissions and retention.
+
+## Testing
+
+Install development dependencies:
 
 ```powershell
 py -m pip install -e ".[dev,http]"
-ruff check .
-ruff format --check .
-mypy src
-pytest
-./scripts/build.ps1
 ```
 
-Unit tests use no display. `windows_desktop` integration tests are skipped unless Windows, an interactive desktop, and `AUTOSCREENREC_RUN_DESKTOP_TESTS=1` are present. GitHub Actions checks Python 3.11-3.13 on Windows, coverage, distributions, wheel installation, and a PyInstaller executable artifact.
+Run the checks used by CI:
 
-## Privacy, troubleshooting, and limitations
+```powershell
+python -m ruff check . --ignore E501,I001
+python -m ruff format --check .
+python -m mypy src
+python -m pytest --cov=automated_screen_recorder
+```
 
-Normal operation is local and has no network call, telemetry, screenshot file, peripheral access, or audio. Screen recordings can contain sensitive visible data; users control destination retention. A black frame can indicate a secure desktop, DRM surface, minimized session, or capture restriction. Hardware codecs require matching drivers. Display geometry can change mid-session; stop/cancel and start a new session. Disk-full and encoder failures leave no final destination but can leave FFmpeg diagnostics in the raised cause. Pause/resume compatibility varies by container in this initial release; prefer MKV and validate it for production workloads. Exact performance depends on display, content, codec, and hardware, so benchmark locally.
+The real capture integration test requires Windows, an interactive desktop, FFmpeg, and:
 
-## Packaging and license
+```powershell
+$env:AUTOSCREENREC_RUN_DESKTOP_TESTS = "1"
+```
 
-`python -m build` creates wheel and sdist. `scripts/build.ps1` also runs PyInstaller. Project code is MIT. Dependencies retain their own licenses: Pydantic (MIT), FastAPI (MIT), Uvicorn (BSD-3-Clause), pytest (MIT), Ruff (MIT), mypy (MIT), and PyInstaller (GPL with its bootloader exception). FFmpeg is external and is not included by default. See `docs/architecture.md`, `CONTRIBUTING.md`, `SECURITY.md`, and `CHANGELOG.md`.
+Normal unit tests use fake backends and do not require physical peripherals.
+
+## Building and packaging
+
+Local build:
+
+```powershell
+.\scripts\build.ps1
+```
+
+Python distributions:
+
+```powershell
+python -m build
+python -m twine check dist\*
+```
+
+GitHub Actions also validates supported Python versions, coverage, package metadata, wheel installation, and the standalone Windows executable.
+
+## Troubleshooting
+
+### FFmpeg was not found
+
+Verify the executable:
+
+```powershell
+ffmpeg -version
+```
+
+If FFmpeg is intentionally not on `PATH`, configure `ffmpeg_path` or `AUTOSCREENREC_FFMPEG`.
+
+### Hardware encoder fails
+
+Try `libx264` first. Hardware encoders depend on the installed hardware, drivers, and the capabilities of the selected FFmpeg build.
+
+### Black or unavailable capture
+
+Secure desktops, protected content, disconnected sessions, and other Windows capture restrictions can prevent normal desktop capture.
+
+### Existing output file
+
+The recorder does not overwrite recordings by default. Choose another target or explicitly configure `overwrite=True`.
+
+## Known limitations
+
+- Secure desktop, DRM-protected surfaces, and disconnected sessions can prevent usable capture.
+- Hardware codecs require compatible hardware, drivers, and FFmpeg support.
+- An interval boundary can contain a short capture gap while FFmpeg finalizes and restarts.
+- Interval outputs are separate files; they are not automatically turned into one continuous final file.
+- File duration can vary slightly around an interval boundary because process finalization and scheduling are not real-time operations.
+
+## Licensing
+
+Project code is MIT. FFmpeg is external and retains the license of the exact build used. Review the selected FFmpeg build before redistribution. PyInstaller and all Python dependencies retain their respective licenses.
+
+## Further documentation
+
+- `docs/api.md`
+- `docs/architecture.md`
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
