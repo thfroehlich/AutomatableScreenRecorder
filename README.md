@@ -376,6 +376,71 @@ python -m twine check dist\*
 
 GitHub Actions also validates supported Python versions, coverage, package metadata, wheel installation, and the standalone Windows executable.
 
+### FFmpeg troubleshooting on Windows
+
+If the recorder reports that FFmpeg cannot be found or started, check the installation before changing recorder code.
+
+#### `ffmpeg` is not recognized
+
+In PowerShell, check whether Windows can resolve the executable:
+
+```powershell
+Get-Command ffmpeg -All -ErrorAction SilentlyContinue
+where.exe ffmpeg
+```
+
+If both commands return nothing, either configure `RecordingConfig.ffmpeg_path`, set `AUTOSCREENREC_FFMPEG`, or add the directory containing `ffmpeg.exe` to `PATH`.
+
+After changing `PATH`, close the terminal, open a new PowerShell window, and verify:
+
+```powershell
+ffmpeg -version
+```
+
+#### FFmpeg exists but the recorder still cannot find it
+
+Use an explicit executable path to remove PATH ambiguity:
+
+```python
+from pathlib import Path
+
+config = RecordingConfig(
+    output_path=Path(r"C:\Recordings\demo.mp4"),
+    ffmpeg_path=Path(r"C:\Tools\ffmpeg\bin\ffmpeg.exe"),
+)
+```
+
+Or set the environment variable before starting the recorder:
+
+```powershell
+$env:AUTOSCREENREC_FFMPEG = "C:\Tools\ffmpeg\bin\ffmpeg.exe"
+```
+
+#### Multiple FFmpeg installations are present
+
+List every matching executable:
+
+```powershell
+Get-Command ffmpeg -All
+where.exe ffmpeg
+```
+
+Then configure the intended `ffmpeg.exe` explicitly with `ffmpeg_path` instead of relying on PATH order.
+
+#### A configured hardware encoder fails
+
+Confirm which encoders are available in the selected FFmpeg build:
+
+```powershell
+ffmpeg -hide_banner -encoders
+```
+
+If a hardware-specific encoder is unavailable or fails to initialize, test the software H.264 configuration first and verify the machine's graphics driver and FFmpeg build separately.
+
+#### Capture starts but the result is black or unavailable
+
+Test from an ordinary interactive Windows desktop session. Secure desktops, protected content, and disconnected sessions may not be capturable through the selected desktop-capture backend.
+
 ## Troubleshooting
 
 ### FFmpeg was not found

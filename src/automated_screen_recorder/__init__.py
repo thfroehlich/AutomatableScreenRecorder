@@ -27,22 +27,22 @@ from automated_screen_recorder.service import ScreenRecorder
 __all__ = [
     "CancellationError",
     "CaptureInitializationError",
+    "DisplayInfo",
     "DisplayUnavailableError",
     "EncoderInitializationError",
     "ExternalProcessError",
     "InvalidConfigurationError",
     "InvalidStateTransitionError",
+    "OutputFormat",
     "OutputPathError",
     "RecorderError",
-    "RecordingError",
-    "SaveError",
-    "DisplayInfo",
-    "OutputFormat",
     "RecordingConfig",
+    "RecordingError",
     "RecordingResult",
     "RecordingState",
     "RecordingStatus",
-    "VideoCodec",
+    "SaveError",
     "ScreenRecorder",
+    "VideoCodec",
 ]
-__version__ = "0.1.0"
+__version__ = "0.3.0"

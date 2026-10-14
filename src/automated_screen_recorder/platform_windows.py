@@ -61,7 +61,6 @@ def enumerate_displays() -> list[DisplayInfo]:
                 primary=rect.left == 0 and rect.top == 0,
             )
         )
-
         return 1
 
     callback_function = monitor_proc_type(callback)

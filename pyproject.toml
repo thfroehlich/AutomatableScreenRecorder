@@ -1,111 +1,51 @@
 [build-system]
-requires = [
-    "hatchling>=1.27,<2",
-]
+requires = ["hatchling>=1.32,<2"]
 build-backend = "hatchling.build"
-
 
 [project]
 name = "automated-screen-recorder"
-version = "0.2.0"
-description = "Local, video-only Windows screen recording with a stable Python API"
+version = "0.3.0"
+description = "Local, video-only Windows screen recording with optional interval saving"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE" }
-authors = [
-    { name = "Automated Screen Recorder contributors" },
-]
-
-dependencies = [
-    "pydantic>=2.10,<3",
-]
-
-classifiers = [
-    "Operating System :: Microsoft :: Windows :: Windows 10",
-    "Operating System :: Microsoft :: Windows :: Windows 11",
-    "Programming Language :: Python :: 3",
-]
-
+license = {file = "LICENSE"}
+dependencies = ["pydantic>=2.10,<3"]
 
 [project.optional-dependencies]
-http = [
-    "fastapi>=0.143,<1",
-    "uvicorn>=0.54,<1",
-]
-
-dev = [
-    "build>=1.2,<2",
-    "httpx>=0.28,<1",
-    "mypy>=1.13,<2",
-    "pkginfo>=1.13,<2",
-    "pyinstaller>=6.22,<7",
-    "pytest>=8.3,<9",
-    "pytest-cov>=7.1,<8",
-    "ruff>=0.17,<0.18",
-    "twine>=7,<8",
-]
-
+http = ["fastapi>=0.143,<1", "uvicorn>=0.54,<1"]
+dev = ["build>=1.2,<2", "httpx>=0.28,<1", "mypy>=1.13,<2", "pkginfo>=1.13,<2", "pyinstaller>=6.22,<7", "pytest>=8.3,<9", "pytest-cov>=7.1,<8", "ruff>=0.17,<0.18", "twine>=7,<8"]
 
 [project.scripts]
 autoscreenrec = "automated_screen_recorder.cli:main"
 autoscreenrec-http = "automated_screen_recorder.http:main"
 autoscreenrec-benchmark = "automated_screen_recorder.benchmark:main"
 
-
 [tool.hatch.build.targets.wheel]
-packages = [
-    "src/automated_screen_recorder",
-]
-
+packages = ["src/automated_screen_recorder"]
 
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 
-
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "I",
-    "B",
-    "UP",
-]
-
+select = ["E", "F", "I", "B", "UP"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
-packages = [
-    "automated_screen_recorder",
-]
-
+packages = ["automated_screen_recorder"]
 
 [tool.pytest.ini_options]
-testpaths = [
-    "tests",
-]
-
-addopts = [
-    "--strict-markers",
-]
-
-markers = [
-    "windows_desktop: requires interactive Windows desktop and FFmpeg",
-]
-
+testpaths = ["tests"]
+addopts = ["--strict-markers"]
+markers = ["windows_desktop: requires interactive Windows desktop and FFmpeg"]
 
 [tool.coverage.run]
 branch = true
-source = [
-    "automated_screen_recorder",
-]
-
+source = ["automated_screen_recorder"]
 
 [tool.coverage.report]
 show_missing = true
-skip_covered = false
-
 
 [tool.coverage.xml]
 output = "coverage.xml"

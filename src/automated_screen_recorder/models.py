@@ -21,7 +21,7 @@ class RecordingState(StrEnum):
 
 
 class OutputFormat(StrEnum):
-    """Supported output containers."""
+    """Supported video containers."""
 
     MP4 = "mp4"
     MKV = "mkv"
@@ -36,7 +36,7 @@ class VideoCodec(StrEnum):
 
 
 class DisplayInfo(BaseModel):
-    """Windows display geometry."""
+    """Display geometry in Windows virtual-screen coordinates."""
 
     model_config = ConfigDict(frozen=True)
     index: int = Field(ge=0)
@@ -49,7 +49,7 @@ class DisplayInfo(BaseModel):
 
 
 class RecordingConfig(BaseModel):
-    """Validated recording configuration."""
+    """Immutable recording configuration."""
 
     model_config = ConfigDict(frozen=True)
     output_path: Path
@@ -64,6 +64,7 @@ class RecordingConfig(BaseModel):
     ffmpeg_path: Path | None = None
     encoder_preset: str = "veryfast"
     stop_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
+    save_interval_seconds: float | None = Field(default=None, ge=0.1, le=86400.0)
 
     @field_validator("output_path")
     @classmethod
@@ -73,7 +74,7 @@ class RecordingConfig(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_dimensions_and_suffix(self) -> RecordingConfig:
+    def validate_configuration(self) -> RecordingConfig:
         if (self.width is None) != (self.height is None):
             raise ValueError("Width and height must be provided together.")
         if self.output_path.suffix.lower() != f".{self.output_format.value}":
@@ -82,25 +83,29 @@ class RecordingConfig(BaseModel):
 
 
 class RecordingStatus(BaseModel):
-    """Thread-safe status snapshot."""
+    """Thread-safe recorder status snapshot."""
 
     session_id: str | None = None
     state: RecordingState = RecordingState.IDLE
     started_at: str | None = None
     elapsed_seconds: float = Field(default=0, ge=0)
-    captured_frames: int = Field(default=0, ge=0)
-    dropped_frames: int = Field(default=0, ge=0)
+    captured_frames: int | None = None
+    dropped_frames: int | None = None
     backend: str | None = None
     error: str | None = None
+    saved_output_paths: list[Path] = Field(default_factory=list)
+    next_interval_save_in_seconds: float | None = Field(default=None, ge=0)
 
 
 class RecordingResult(BaseModel):
-    """Result returned after save."""
+    """Result returned after a successful save."""
 
     session_id: str
     output_path: Path
+    output_paths: list[Path]
     duration_seconds: float = Field(ge=0)
     file_size_bytes: int = Field(ge=0)
+    total_file_size_bytes: int = Field(ge=0)
     codec: VideoCodec
 
 
@@ -113,19 +118,19 @@ class ErrorResponse(BaseModel):
 
 
 class StartRequest(BaseModel):
-    """HTTP start body with idempotency key."""
+    """HTTP start request with an idempotency key."""
 
     request_id: str = Field(min_length=8, max_length=128)
     config: RecordingConfig
 
 
 class ControlRequest(BaseModel):
-    """HTTP state-change body with idempotency key."""
+    """HTTP control request with an idempotency key."""
 
     request_id: str = Field(min_length=8, max_length=128)
 
 
 class SaveRequest(ControlRequest):
-    """HTTP save body."""
+    """HTTP save request."""
 
     output_path: Path | None = None

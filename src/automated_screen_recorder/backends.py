@@ -1,19 +1,21 @@
-"""FFmpeg process backend and testable protocol."""
+"""FFmpeg process backend and replaceable protocol."""
 
 from __future__ import annotations
 
 import os
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 from automated_screen_recorder.exceptions import ExternalProcessError
 from automated_screen_recorder.models import DisplayInfo, RecordingConfig
 
 
 class CaptureProcess(Protocol):
-    """Minimal process adapter used by the service."""
+    """Backend boundary consumed by the recording service."""
 
     def start(
         self, config: RecordingConfig, display: DisplayInfo, target: Path
@@ -26,6 +28,11 @@ class CaptureProcess(Protocol):
     def cancel(self, timeout: float) -> None:
         raise NotImplementedError
 
+    def concatenate(
+        self, config: RecordingConfig, segments: list[Path], target: Path
+    ) -> None:
+        raise NotImplementedError
+
     def command(
         self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> list[str]:
@@ -33,41 +40,42 @@ class CaptureProcess(Protocol):
 
 
 class FfmpegBackend:
-    """Capture screen pixels and encode them in one FFmpeg process."""
+    """Capture and encode video-only segments using one FFmpeg process."""
 
     def __init__(self) -> None:
         self._process: subprocess.Popen[bytes] | None = None
+        self._stderr: BinaryIO | None = None
 
     @staticmethod
     def discover(configured: Path | None) -> Path:
+        environment = os.environ.get("AUTOSCREENREC_FFMPEG")
         candidates = [
             configured,
-            Path(os.environ["AUTOSCREENREC_FFMPEG"])
-            if "AUTOSCREENREC_FFMPEG" in os.environ
+            Path(environment)
+            if environment
             else None,
             Path.cwd() / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe",
         ]
-        found = shutil.which("ffmpeg.exe")
-        if found:
-            candidates.append(Path(found))
+        discovered = shutil.which("ffmpeg.exe") or shutil.which("ffmpeg")
+        candidates.append(Path(discovered) if discovered else None)
         for candidate in candidates:
-            if candidate and candidate.is_file():
+            if candidate is not None and candidate.is_file():
                 return candidate.resolve()
-        raise ExternalProcessError(
-            "FFmpeg executable was not found. "
-            "Configure ffmpeg_path or install the local tool bundle."
-        )
+        raise ExternalProcessError("FFmpeg was not found. Configure ffmpeg_path or AUTOSCREENREC_FFMPEG.")
 
-    @classmethod
-    def validate_version(cls, path: Path) -> str:
-        result = subprocess.run(
-            [str(path), "-version"],
-            capture_output=True,
-            text=True,
-            check=False,
-            shell=False,
-            timeout=10,
-        )
+    @staticmethod
+    def validate_version(path: Path) -> str:
+        try:
+            result = subprocess.run(
+                [str(path), "-version"],
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            raise ExternalProcessError("FFmpeg version validation failed.") from error
         if result.returncode or not result.stdout.startswith("ffmpeg version"):
             raise ExternalProcessError("The configured FFmpeg executable is invalid.")
         return result.stdout.splitlines()[0]
@@ -100,7 +108,7 @@ class FfmpegBackend:
             "desktop",
             "-an",
         ]
-        if config.width is not None:
+        if config.width is not None and config.height is not None:
             command += [
                 "-vf",
                 f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease,pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2",
@@ -119,43 +127,115 @@ class FfmpegBackend:
     def start(
         self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> None:
-        self._process = subprocess.Popen(
-            self.command(config, display, target),
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            shell=False,
-        )
-        if self._process.poll() is not None:
-            raise ExternalProcessError("FFmpeg terminated during startup.")
+        if self._process is not None:
+            raise ExternalProcessError("FFmpeg is already running.")
+        self._stderr = tempfile.TemporaryFile()
+        try:
+            self._process = subprocess.Popen(
+                self.command(config, display, target),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=self._stderr,
+                shell=False,
+            )
+            time.sleep(0.15)
+            if self._process.poll() is not None:
+                raise ExternalProcessError(
+                    f"FFmpeg terminated during startup: {self._diagnostic()}"
+                )
+        except Exception:
+            process = self._process
+            if process is not None and process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            self._process = None
+            self._close_stderr()
+            raise
 
     def stop(self, timeout: float) -> None:
         process = self._require()
         process_stdin = process.stdin
-
         if process_stdin is not None:
             try:
                 process_stdin.write(b"q\n")
                 process_stdin.flush()
             except OSError:
                 pass
-
         self._wait(process, timeout, False)
-        if process.returncode:
-            raise ExternalProcessError("FFmpeg failed while finalizing the recording.")
+        diagnostic = self._diagnostic()
+        return_code = process.returncode
         self._process = None
+        self._close_stderr()
+        if return_code:
+            raise ExternalProcessError(
+                f"FFmpeg failed while finalizing the recording: {diagnostic}"
+            )
 
     def cancel(self, timeout: float) -> None:
         process = self._process
         if process is None:
+            self._close_stderr()
             return
         process.terminate()
         self._wait(process, timeout, True)
         self._process = None
+        self._close_stderr()
+
+    def concatenate(
+        self, config: RecordingConfig, segments: list[Path], target: Path
+    ) -> None:
+        if not segments:
+            raise ExternalProcessError("No recording segments are available.")
+        if len(segments) == 1:
+            shutil.copyfile(segments[0], target)
+            return
+        executable = self.discover(config.ffmpeg_path)
+        self.validate_version(executable)
+        manifest = target.with_suffix(".concat.txt")
+        manifest.write_text(
+            "".join(f"file '{segment.resolve().as_posix()}'\n" for segment in segments),
+            encoding="utf-8"
+        )
+        try:
+            result = subprocess.run(
+                [
+                    str(executable),
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    str(manifest),
+                    "-map",
+                    "0:v:0",
+                    "-c",
+                    "copy",
+                    "-an",
+                    "-y",
+                    str(target),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                shell=False,
+                timeout=max(30.0, config.stop_timeout_seconds),
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            raise ExternalProcessError("FFmpeg concatenation failed.") from error
+        finally:
+            manifest.unlink(missing_ok=True)
+        if result.returncode or not target.is_file():
+            target.unlink(missing_ok=True)
+            raise ExternalProcessError(
+                f"FFmpeg concatenation failed: {result.stderr.strip()[-1000:] or 'no diagnostic output'}"
+            )
 
     def _require(self) -> subprocess.Popen[bytes]:
         if self._process is None:
-            raise ExternalProcessError("FFmpeg process is not running.")
+            raise ExternalProcessError("FFmpeg is not running.")
         return self._process
 
     @staticmethod
@@ -164,10 +244,21 @@ class FfmpegBackend:
     ) -> None:
         try:
             process.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as error:
             process.kill()
             process.wait(timeout=5)
-            if not allow_nonzero:
-                raise ExternalProcessError(
-                    "FFmpeg did not stop within the configured timeout."
-                ) from None
+            if not allow_nonzero: raise ExternalProcessError(
+                "FFmpeg did not stop within the configured timeout."
+            ) from error
+
+    def _diagnostic(self) -> str:
+        if self._stderr is None:
+            return "no diagnostic output"
+        self._stderr.flush()
+        self._stderr.seek(0)
+        return self._stderr.read().decode("utf-8", errors="replace").strip()[-1000:] or "no diagnostic output"
+
+    def _close_stderr(self) -> None:
+        if self._stderr is not None:
+            self._stderr.close()
+            self._stderr = None

@@ -1,24 +1,37 @@
-name: Build Windows EXE
+name: Build and Release Windows EXE
 
 on:
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub Release"
+        required: true
+        default: false
+        type: boolean
+
+      release_tag:
+        description: "Release tag for a manual release, for example v0.2.0"
+        required: false
+        type: string
 
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-exe:
-    name: Build standalone Windows executable
+    name: Build Windows x64 executable
     runs-on: windows-latest
     timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -33,6 +46,7 @@ jobs:
         run: |
           python --version
           python -m pip --version
+
           Write-Host "Runner OS: $env:RUNNER_OS"
           Write-Host "Runner architecture: $env:RUNNER_ARCH"
 
@@ -48,7 +62,9 @@ jobs:
       - name: Install project and build dependencies
         shell: pwsh
         run: |
-          python -m pip install -e ".[dev,http]"
+          python -m pip install `
+            --upgrade `
+            -e ".[dev,http]"
 
       - name: Verify project import
         shell: pwsh
@@ -66,7 +82,8 @@ jobs:
           $PathsToRemove = @(
             "build",
             "dist",
-            "autoscreenrec.spec"
+            "autoscreenrec.spec",
+            "release"
           )
 
           foreach ($PathToRemove in $PathsToRemove) {
@@ -116,19 +133,12 @@ jobs:
           $Executable = Get-Item $ExecutablePath
 
           if ($Executable.Length -eq 0) {
-            throw (
-              "The standalone Windows executable is empty."
-            )
+            throw "The standalone Windows executable is empty."
           }
 
           Write-Host "Generated executable:"
           Write-Host "Path: $($Executable.FullName)"
           Write-Host "Size: $($Executable.Length) bytes"
-          Write-Host "SHA-256:"
-
-          Get-FileHash `
-            -Path $Executable.FullName `
-            -Algorithm SHA256
 
       - name: Run executable smoke test
         shell: pwsh
@@ -149,32 +159,183 @@ jobs:
             )
           }
 
-      - name: Create checksum file
+      - name: Determine release version
+        id: version
         shell: pwsh
         run: |
-          $ExecutablePath = Resolve-Path "dist/autoscreenrec.exe"
+          $PackageVersion = python -c `
+            "import automated_screen_recorder; print(automated_screen_recorder.__version__)"
+
+          $PackageVersion = $PackageVersion.Trim()
+
+          if (-not $PackageVersion) {
+            throw "Could not determine the package version."
+          }
+
+          Write-Host "Package version: $PackageVersion"
+
+          "package_version=$PackageVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare release files
+        shell: pwsh
+        run: |
+          $Version = "${{ steps.version.outputs.package_version }}"
+
+          New-Item `
+            -ItemType Directory `
+            -Path "release" `
+            -Force |
+            Out-Null
+
+          $ReleaseExecutable = (
+            "autoscreenrec-" +
+            $Version +
+            "-windows-x64.exe"
+          )
+
+          Copy-Item `
+            -Path "dist/autoscreenrec.exe" `
+            -Destination (
+              Join-Path "release" $ReleaseExecutable
+            )
+
+          Write-Host (
+            "Release executable: " +
+            $ReleaseExecutable
+          )
+
+      - name: Create SHA-256 checksum
+        shell: pwsh
+        run: |
+          $Executable = Get-ChildItem `
+            -Path "release" `
+            -Filter "*.exe" `
+            -File |
+            Select-Object -First 1
+
+          if (-not $Executable) {
+            throw "No release executable was found."
+          }
+
           $Hash = Get-FileHash `
-            -Path $ExecutablePath `
+            -Path $Executable.FullName `
             -Algorithm SHA256
 
           $ChecksumLine = (
             $Hash.Hash.ToLowerInvariant() +
-            "  autoscreenrec.exe"
+            "  " +
+            $Executable.Name
+          )
+
+          $ChecksumPath = (
+            $Executable.FullName +
+            ".sha256"
           )
 
           Set-Content `
-            -Path "dist/autoscreenrec.exe.sha256" `
+            -Path $ChecksumPath `
             -Value $ChecksumLine `
             -Encoding ascii
 
-          Get-Content "dist/autoscreenrec.exe.sha256"
+          Get-Content $ChecksumPath
 
-      - name: Upload Windows executable
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
         with:
           name: autoscreenrec-windows-x64
           path: |
-            dist/autoscreenrec.exe
-            dist/autoscreenrec.exe.sha256
+            release/*.exe
+            release/*.sha256
           if-no-files-found: error
           retention-days: 30
+
+      - name: Determine GitHub Release tag
+        id: release
+        if: >
+          github.ref_type == 'tag' ||
+          (
+            github.event_name == 'workflow_dispatch' &&
+            inputs.create_release
+          )
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $ReleaseTag = "${{ github.ref_name }}"
+          }
+          else {
+            $ReleaseTag = "${{ inputs.release_tag }}".Trim()
+
+            if (-not $ReleaseTag) {
+              throw (
+                "release_tag is required when creating " +
+                "a manual GitHub Release."
+              )
+            }
+          }
+
+          if (-not $ReleaseTag.StartsWith("v")) {
+            throw (
+              "Release tags must start with 'v'. " +
+              "Example: v0.2.0"
+            )
+          }
+
+          Write-Host "Release tag: $ReleaseTag"
+
+          "tag=$ReleaseTag" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: >
+          github.ref_type == 'tag' ||
+          (
+            github.event_name == 'workflow_dispatch' &&
+            inputs.create_release
+          )
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ReleaseTag = "${{ steps.release.outputs.tag }}"
+
+          $Assets = @(
+            Get-ChildItem `
+              -Path "release" `
+              -File |
+            Select-Object -ExpandProperty FullName
+          )
+
+          if ($Assets.Count -lt 2) {
+            throw (
+              "Expected the executable and checksum " +
+              "before creating the release."
+            )
+          }
+
+          $ExistingRelease = gh release view `
+            $ReleaseTag `
+            --json tagName `
+            2>$null
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host (
+              "Release $ReleaseTag already exists. " +
+              "Uploading current assets."
+            )
+
+            gh release upload `
+              $ReleaseTag `
+              $Assets `
+              --clobber
+          }
+          else {
+            Write-Host (
+              "Creating GitHub Release $ReleaseTag."
+            )
+
+            gh release create `
+              $ReleaseTag `
+              $Assets `
+              --verify-tag `
+              --generate-notes `
+              --title $ReleaseTag
+          }

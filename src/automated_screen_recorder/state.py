@@ -1,4 +1,4 @@
-"""Thread-safe state machine."""
+"""Thread-safe recording state machine."""
 
 from threading import RLock
 
@@ -31,7 +31,7 @@ _ALLOWED = {
 
 
 class RecordingStateMachine:
-    """Serialize and validate lifecycle changes."""
+    """Serialize and validate state transitions."""
 
     def __init__(self) -> None:
         self._state = RecordingState.IDLE

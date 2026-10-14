@@ -14,11 +14,11 @@ class InvalidStateTransitionError(RecorderError):
 
 
 class CaptureInitializationError(RecorderError):
-    """Capture could not start."""
+    """Capture initialization failed."""
 
 
 class EncoderInitializationError(RecorderError):
-    """Encoder could not start."""
+    """Encoder initialization failed."""
 
 
 class DisplayUnavailableError(RecorderError):
@@ -34,11 +34,11 @@ class RecordingError(RecorderError):
 
 
 class SaveError(RecorderError):
-    """Recording could not be saved."""
+    """Recording save failed."""
 
 
 class CancellationError(RecorderError):
-    """Recording could not be cancelled."""
+    """Cancellation failed."""
 
 
 class ExternalProcessError(RecorderError):
