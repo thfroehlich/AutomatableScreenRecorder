@@ -3,88 +3,98 @@
 from __future__ import annotations
 
 import argparse
-import threading
-from collections import OrderedDict
-from collections.abc import Callable
 
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from automated_screen_recorder import RecorderError
 from automated_screen_recorder.models import (
     ControlRequest,
     ErrorResponse,
     SaveRequest,
     StartRequest,
+    RecordingStatus,
+    DisplayInfo,
+    RecordingResult,
 )
 from automated_screen_recorder.service import ScreenRecorder
 
 
-def create_app(recorder: ScreenRecorder | None = None):
+def create_app(recorder: ScreenRecorder | None = None) -> FastAPI:
     """Create a FastAPI application without enabling a network listener."""
-    try:
-        from fastapi import FastAPI, Request
-        from fastapi.responses import JSONResponse
-    except ImportError as error:
-        raise RuntimeError(
-            "Install the 'http' optional dependency to use the HTTP API."
-        ) from error
     service = recorder or ScreenRecorder()
-    app = FastAPI(title="Win Screen Recorder", version="0.1.0")
-    lock = threading.RLock()
-    cache: OrderedDict[str, object] = OrderedDict()
+    app = FastAPI(
+        title="Automated Screen Recorder",
+        version="0.2.0",
+    )
 
-    def once(key: str, operation: Callable[[], object]) -> object:
-        with lock:
-            if key in cache:
-                return cache[key]
-            result = operation()
-            cache[key] = result
-            while len(cache) > 256:
-                cache.popitem(last=False)
-            return result
+    @app.get("/recordings/status")
+    def status() -> RecordingStatus:
+        return service.get_status()
 
-    @app.exception_handler(Exception)
-    async def error_handler(_request: Request, error: Exception):
+    @app.get("/displays")
+    def displays() -> list[DisplayInfo]:
+        return service.enumerate_displays()
+
+    @app.exception_handler(RecorderError)
+    async def recorder_error_handler(
+            _request: Request,
+            error: RecorderError,
+    ) -> JSONResponse:
         body = ErrorResponse(
             error_type=type(error).__name__,
             message=str(error),
             state=service.get_status().state,
         )
+
         return JSONResponse(
             status_code=409,
             content=body.model_dump(mode="json"),
         )
 
-    @app.post("/recordings/start")
-    def start(request: StartRequest):
-        return once(request.request_id, lambda: service.start_recording(request.config))
-
-    @app.post("/recordings/pause")
-    def pause(request: ControlRequest):
-        return once(request.request_id, service.pause_recording)
-
-    @app.post("/recordings/resume")
-    def resume(request: ControlRequest):
-        return once(request.request_id, service.resume_recording)
-
-    @app.post("/recordings/stop")
-    def stop(request: ControlRequest):
-        return once(request.request_id, service.stop_recording)
-
-    @app.post("/recordings/cancel")
-    def cancel(request: ControlRequest):
-        return once(request.request_id, service.cancel_recording)
-
-    @app.post("/recordings/save")
-    def save(request: SaveRequest):
-        return once(
-            request.request_id, lambda: service.save_recording(request.output_path)
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+            _request: Request,
+            error: RequestValidationError,
+    ) -> JSONResponse:
+        body = ErrorResponse(
+            error_type="RequestValidationError",
+            message="Request validation failed.",
+            state=service.get_status().state,
         )
 
-    @app.get("/recordings/status")
-    def status():
-        return service.get_status()
+        return JSONResponse(
+            status_code=422,
+            content={
+                **body.model_dump(mode="json"),
+                "details": error.errors(),
+            },
+        )
 
-    @app.get("/displays")
-    def displays():
-        return service.enumerate_displays()
+    @app.post("/recordings/start")
+    def start(request: StartRequest) -> RecordingStatus:
+        return service.start_recording(request.config)
+
+    @app.post("/recordings/pause")
+    def pause(request: ControlRequest) -> RecordingStatus:
+        return service.pause_recording()
+
+    @app.post("/recordings/resume")
+    def resume(request: ControlRequest) -> RecordingStatus:
+        return service.resume_recording()
+
+    @app.post("/recordings/stop")
+    def stop(request: ControlRequest) -> RecordingStatus:
+        return service.stop_recording()
+
+    @app.post("/recordings/cancel")
+    def cancel(request: ControlRequest) -> RecordingStatus:
+        return service.cancel_recording()
+
+    @app.post("/recordings/save")
+    def save(request: SaveRequest) -> RecordingResult:
+        return service.save_recording(request.output_path)
 
     return app
 

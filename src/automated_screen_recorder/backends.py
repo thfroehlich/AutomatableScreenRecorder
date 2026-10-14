@@ -130,9 +130,15 @@ class FfmpegBackend:
 
     def stop(self, timeout: float) -> None:
         process = self._require()
-        if process.stdin:
-            process.stdin.write(b"q\n")
-        process.stdin.flush()
+        process_stdin = process.stdin
+
+        if process_stdin is not None:
+            try:
+                process_stdin.write(b"q\n")
+                process_stdin.flush()
+            except OSError:
+                pass
+
         self._wait(process, timeout, False)
         if process.returncode:
             raise ExternalProcessError("FFmpeg failed while finalizing the recording.")
