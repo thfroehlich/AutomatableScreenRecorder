@@ -43,6 +43,7 @@ class FfmpegBackend:
     """Capture and encode video-only segments using one FFmpeg process."""
 
     def __init__(self) -> None:
+        """Initialize an inactive FFmpeg backend."""
         self._process: subprocess.Popen[bytes] | None = None
         self._stderr: BinaryIO | None = None
 
@@ -124,12 +125,38 @@ class FfmpegBackend:
         ]
         return command
 
+    def _read_stderr(self) -> str:
+        """Read the captured FFmpeg diagnostic output."""
+        stderr_file = self._stderr
+        if stderr_file is None:
+            return "no diagnostic output"
+
+        stderr_file.flush()
+        stderr_file.seek(0)
+        data = stderr_file.read()
+        return (
+            data.decode(
+                "utf-8",
+                errors="replace",
+            )
+            .strip()[-1000:]
+            or "no diagnostic output"
+        )
+
+    def _close_stderr(self) -> None:
+        """Close the private FFmpeg diagnostic file."""
+        stderr_file = self._stderr
+        if stderr_file is not None:
+            stderr_file.close()
+        self._stderr = None
+
     def start(
         self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> None:
+        """Start one FFmpeg recording process."""
         if self._process is not None:
             raise ExternalProcessError("FFmpeg is already running.")
-        self._stderr = tempfile.TemporaryFile()
+        self._stderr = tempfile.TemporaryFile(mode="w+b")
         try:
             self._process = subprocess.Popen(
                 self.command(config, display, target),
@@ -140,8 +167,11 @@ class FfmpegBackend:
             )
             time.sleep(0.15)
             if self._process.poll() is not None:
+                diagnostic = self._read_stderr()
+                self._process = None
+                self._close_stderr()
                 raise ExternalProcessError(
-                    f"FFmpeg terminated during startup: {self._diagnostic()}"
+                    f"FFmpeg terminated during startup: {diagnostic}"
                 )
         except Exception:
             process = self._process
@@ -261,8 +291,3 @@ class FfmpegBackend:
             self._stderr.read().decode("utf-8", errors="replace").strip()[-1000:]
             or "no diagnostic output"
         )
-
-    def _close_stderr(self) -> None:
-        if self._stderr is not None:
-            self._stderr.close()
-            self._stderr = None
