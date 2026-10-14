@@ -70,15 +70,11 @@ def create_app(
             cache[key] = result
 
             while len(cache) > 256:
-                cache.popitem(
-                    last=False
-                )
+                cache.popitem(last=False)
 
             return result
 
-    @app.exception_handler(
-        RecorderError
-    )
+    @app.exception_handler(RecorderError)
     async def recorder_error_handler(
         _request: Request,
         error: RecorderError,
@@ -92,14 +88,10 @@ def create_app(
 
         return JSONResponse(
             status_code=409,
-            content=body.model_dump(
-                mode="json"
-            ),
+            content=body.model_dump(mode="json"),
         )
 
-    @app.exception_handler(
-        RequestValidationError
-    )
+    @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
         _request: Request,
         error: RequestValidationError,
@@ -111,13 +103,9 @@ def create_app(
             state=service.get_status().state,
         )
 
-        content = body.model_dump(
-            mode="json"
-        )
+        content = body.model_dump(mode="json")
 
-        content["details"] = (
-            error.errors()
-        )
+        content["details"] = error.errors()
 
         return JSONResponse(
             status_code=422,
@@ -135,9 +123,7 @@ def create_app(
         return execute_once(
             "start",
             request.request_id,
-            lambda: service.start_recording(
-                request.config
-            ),
+            lambda: service.start_recording(request.config),
         )
 
     @app.post(
@@ -207,9 +193,7 @@ def create_app(
         return execute_once(
             "save",
             request.request_id,
-            lambda: service.save_recording(
-                request.output_path
-            ),
+            lambda: service.save_recording(request.output_path),
         )
 
     @app.get(

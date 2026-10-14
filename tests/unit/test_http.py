@@ -47,9 +47,7 @@ class FakeBackend:
 
         self.start_count += 1
 
-        target.write_bytes(
-            b"video"
-        )
+        target.write_bytes(b"video")
 
     def stop(
         self,
@@ -78,14 +76,9 @@ class FakeBackend:
         """Concatenate fake video segments."""
         del config
 
-        content = b"".join(
-            segment.read_bytes()
-            for segment in segments
-        )
+        content = b"".join(segment.read_bytes() for segment in segments)
 
-        target.write_bytes(
-            content
-        )
+        target.write_bytes(content)
 
 
 def test_status_and_structured_error(
@@ -96,22 +89,11 @@ def test_status_and_structured_error(
 
     backend = FakeBackend()
 
-    client = TestClient(
-        create_app(
-            ScreenRecorder(
-                backend
-            )
-        )
-    )
+    client = TestClient(create_app(ScreenRecorder(backend)))
 
-    status_response = client.get(
-        "/recordings/status"
-    )
+    status_response = client.get("/recordings/status")
 
-    assert (
-        status_response.status_code
-        == 200
-    )
+    assert (status_response.status_code == 200)
 
     response = client.post(
         "/recordings/stop",
@@ -124,15 +106,9 @@ def test_status_and_structured_error(
 
     response_body = response.json()
 
-    assert (
-        response_body["error_type"]
-        == "InvalidStateTransitionError"
-    )
+    assert (response_body["error_type"] == "InvalidStateTransitionError")
 
-    assert (
-        response_body["state"]
-        == "idle"
-    )
+    assert (response_body["state"] == "idle")
 
 
 def test_duplicate_start_is_idempotent(
@@ -140,25 +116,14 @@ def test_duplicate_start_is_idempotent(
 ) -> None:
     """Execute duplicate start requests only once."""
     backend = FakeBackend()
-    recorder = ScreenRecorder(
-        backend
-    )
+    recorder = ScreenRecorder(backend)
 
-    client = TestClient(
-        create_app(
-            recorder
-        )
-    )
+    client = TestClient(create_app(recorder))
 
     payload = {
         "request_id": "request-0002",
         "config": {
-            "output_path": str(
-                (
-                    tmp_path
-                    / "x.mp4"
-                ).resolve()
-            ),
+            "output_path": str((tmp_path / "x.mp4").resolve()),
         },
     }
 
@@ -175,10 +140,7 @@ def test_duplicate_start_is_idempotent(
     assert first.status_code == 200
     assert second.status_code == 200
 
-    assert (
-        second.json()
-        == first.json()
-    )
+    assert second.json() == first.json()
 
     assert backend.start_count == 1
 
@@ -190,15 +152,9 @@ def test_request_identifier_is_scoped_to_operation(
 ) -> None:
     """Allow one request identifier for different operations."""
     backend = FakeBackend()
-    recorder = ScreenRecorder(
-        backend
-    )
+    recorder = ScreenRecorder(backend)
 
-    client = TestClient(
-        create_app(
-            recorder
-        )
-    )
+    client = TestClient(create_app(recorder))
 
     request_id = "request-0003"
 
@@ -207,20 +163,12 @@ def test_request_identifier_is_scoped_to_operation(
         json={
             "request_id": request_id,
             "config": {
-                "output_path": str(
-                    (
-                        tmp_path
-                        / "recording.mp4"
-                    ).resolve()
-                ),
+                "output_path": str((tmp_path / "recording.mp4").resolve()),
             },
         },
     )
 
-    assert (
-        start_response.status_code
-        == 200
-    )
+    assert start_response.status_code == 200
 
     stop_response = client.post(
         "/recordings/stop",
@@ -229,10 +177,7 @@ def test_request_identifier_is_scoped_to_operation(
         },
     )
 
-    assert (
-        stop_response.status_code
-        == 200
-    )
+    assert stop_response.status_code == 200
 
     assert (
         stop_response.json()["state"]
