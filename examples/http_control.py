@@ -7,7 +7,7 @@ body = json.dumps(
         "config": {
             "output_path": "C:\\Recordings\\http.mp4",
             "create_output_directory": True,
-        }
+        },
     }
 ).encode()
 request = urllib.request.Request(

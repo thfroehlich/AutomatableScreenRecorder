@@ -32,9 +32,7 @@ class RecordingStorage:
         if path.exists() and not overwrite:
             raise OutputPathError("Output file already exists.")
 
-    def save(
-        self, source: Path, destination: Path, overwrite: bool
-    ) -> None:
+    def save(self, source: Path, destination: Path, overwrite: bool) -> None:
         if not source.is_file():
             raise SaveError("Temporary recording is missing.")
         try:
