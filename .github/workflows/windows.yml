@@ -1,0 +1,33 @@
+name: Windows CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python-version }}"}
+      - run: python -m pip install -e ".[dev,http]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy src
+      - run: pytest --cov-report=xml --cov-report=term
+      - uses: actions/upload-artifact@v4
+        with: {name: "coverage-${{ matrix.python-version }}", path: coverage.xml}
+  package:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: ./scripts/build.ps1
+      - run: python -m pip install dist/*.whl
+      - run: python -c "import automated_screen_recorder; print(automated_screen_recorder.__version__)"
+      - uses: actions/upload-artifact@v4
+        with: {name: windows-package, path: "dist/*"}
