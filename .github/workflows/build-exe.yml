@@ -1,0 +1,180 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-exe:
+    name: Build standalone Windows executable
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Show build environment
+        shell: pwsh
+        run: |
+          python --version
+          python -m pip --version
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner architecture: $env:RUNNER_ARCH"
+
+      - name: Upgrade packaging tools
+        shell: pwsh
+        run: |
+          python -m pip install `
+            --upgrade `
+            pip `
+            setuptools `
+            wheel
+
+      - name: Install project and build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -e ".[dev,http]"
+
+      - name: Verify project import
+        shell: pwsh
+        run: |
+          python -c "import automated_screen_recorder; print(automated_screen_recorder.__version__)"
+
+      - name: Verify PyInstaller installation
+        shell: pwsh
+        run: |
+          python -m PyInstaller --version
+
+      - name: Remove previous build artifacts
+        shell: pwsh
+        run: |
+          $PathsToRemove = @(
+            "build",
+            "dist",
+            "autoscreenrec.spec"
+          )
+
+          foreach ($PathToRemove in $PathsToRemove) {
+            if (Test-Path $PathToRemove) {
+              Remove-Item `
+                -Path $PathToRemove `
+                -Recurse `
+                -Force
+            }
+          }
+
+      - name: Verify standalone entry point
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "scripts/standalone_entry.py")) {
+            throw (
+              "The required scripts/standalone_entry.py " +
+              "file was not found."
+            )
+          }
+
+      - name: Build standalone executable
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --console `
+            --name autoscreenrec `
+            --paths src `
+            --collect-submodules automated_screen_recorder `
+            scripts/standalone_entry.py
+
+      - name: Verify generated executable
+        shell: pwsh
+        run: |
+          $ExecutablePath = "dist/autoscreenrec.exe"
+
+          if (-not (Test-Path $ExecutablePath)) {
+            throw (
+              "The standalone Windows executable " +
+              "was not generated."
+            )
+          }
+
+          $Executable = Get-Item $ExecutablePath
+
+          if ($Executable.Length -eq 0) {
+            throw (
+              "The standalone Windows executable is empty."
+            )
+          }
+
+          Write-Host "Generated executable:"
+          Write-Host "Path: $($Executable.FullName)"
+          Write-Host "Size: $($Executable.Length) bytes"
+          Write-Host "SHA-256:"
+
+          Get-FileHash `
+            -Path $Executable.FullName `
+            -Algorithm SHA256
+
+      - name: Run executable smoke test
+        shell: pwsh
+        run: |
+          $ExecutablePath = Resolve-Path "dist/autoscreenrec.exe"
+
+          $Process = Start-Process `
+            -FilePath $ExecutablePath `
+            -ArgumentList "--help" `
+            -NoNewWindow `
+            -PassThru `
+            -Wait
+
+          if ($Process.ExitCode -ne 0) {
+            throw (
+              "The executable smoke test failed with " +
+              "exit code $($Process.ExitCode)."
+            )
+          }
+
+      - name: Create checksum file
+        shell: pwsh
+        run: |
+          $ExecutablePath = Resolve-Path "dist/autoscreenrec.exe"
+          $Hash = Get-FileHash `
+            -Path $ExecutablePath `
+            -Algorithm SHA256
+
+          $ChecksumLine = (
+            $Hash.Hash.ToLowerInvariant() +
+            "  autoscreenrec.exe"
+          )
+
+          Set-Content `
+            -Path "dist/autoscreenrec.exe.sha256" `
+            -Value $ChecksumLine `
+            -Encoding ascii
+
+          Get-Content "dist/autoscreenrec.exe.sha256"
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: autoscreenrec-windows-x64
+          path: |
+            dist/autoscreenrec.exe
+            dist/autoscreenrec.exe.sha256
+          if-no-files-found: error
+          retention-days: 30

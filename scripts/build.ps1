@@ -12,8 +12,20 @@ try {
     Write-Host "==> Upgrading pip"
     python -m pip install --upgrade pip
 
-    Write-Host "==> Installing development dependencies"
-    python -m pip install -e ".[dev,http]"
+    Write-Host "==> Installing current development dependencies"
+    python -m pip install `
+        --upgrade `
+        -e ".[dev,http]"
+
+    Write-Host "==> Installed packaging tool versions"
+    python -m build --version
+    python -m twine --version
+
+    python -c `
+        "from importlib.metadata import version; print('pkginfo:', version('pkginfo'))"
+
+    python -c `
+        "from importlib.metadata import version; print('hatchling:', version('hatchling'))"
 
     Write-Host "==> Running blocking Ruff checks"
     python -m ruff check . --ignore E501,I001

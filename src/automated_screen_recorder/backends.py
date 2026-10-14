@@ -54,7 +54,8 @@ class FfmpegBackend:
             if candidate and candidate.is_file():
                 return candidate.resolve()
         raise ExternalProcessError(
-            "FFmpeg executable was not found. Configure ffmpeg_path or install the local tool bundle."
+            "FFmpeg executable was not found. "
+            "Configure ffmpeg_path or install the local tool bundle."
         )
 
     @classmethod
