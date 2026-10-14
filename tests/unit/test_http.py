@@ -93,7 +93,7 @@ def test_status_and_structured_error(
 
     status_response = client.get("/recordings/status")
 
-    assert (status_response.status_code == 200)
+    assert status_response.status_code == 200
 
     response = client.post(
         "/recordings/stop",
@@ -106,9 +106,9 @@ def test_status_and_structured_error(
 
     response_body = response.json()
 
-    assert (response_body["error_type"] == "InvalidStateTransitionError")
+    assert response_body["error_type"] == "InvalidStateTransitionError"
 
-    assert (response_body["state"] == "idle")
+    assert response_body["state"] == "idle"
 
 
 def test_duplicate_start_is_idempotent(
@@ -178,12 +178,7 @@ def test_request_identifier_is_scoped_to_operation(
     )
 
     assert stop_response.status_code == 200
-
-    assert (
-        stop_response.json()["state"]
-        == "stopped"
-    )
-
+    assert stop_response.json()["state"] == "stopped"
     assert backend.start_count == 1
     assert backend.stop_count == 1
 
