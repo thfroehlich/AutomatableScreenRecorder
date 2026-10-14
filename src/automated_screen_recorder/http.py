@@ -39,8 +39,8 @@ def create_app(recorder: ScreenRecorder | None = None) -> FastAPI:
 
     @app.exception_handler(RecorderError)
     async def recorder_error_handler(
-            _request: Request,
-            error: RecorderError,
+        _request: Request,
+        error: RecorderError,
     ) -> JSONResponse:
         body = ErrorResponse(
             error_type=type(error).__name__,
@@ -55,8 +55,8 @@ def create_app(recorder: ScreenRecorder | None = None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
-            _request: Request,
-            error: RequestValidationError,
+        _request: Request,
+        error: RequestValidationError,
     ) -> JSONResponse:
         body = ErrorResponse(
             error_type="RequestValidationError",
