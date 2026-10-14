@@ -157,10 +157,7 @@ class FfmpegBackend:
             "utf-8",
             errors="replace",
         )
-        return (
-            diagnostic.strip()[-1000:]
-            or "no diagnostic output"
-        )
+        return diagnostic.strip()[-1000:] or "no diagnostic output"
 
     def _close_stderr(self) -> None:
         """Close the FFmpeg diagnostic file."""
