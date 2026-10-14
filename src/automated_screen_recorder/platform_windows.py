@@ -3,6 +3,7 @@
 import ctypes
 import sys
 from ctypes import wintypes
+from typing import Any
 
 from automated_screen_recorder.exceptions import DisplayUnavailableError
 from automated_screen_recorder.models import DisplayInfo
@@ -39,7 +40,7 @@ def enumerate_displays() -> list[DisplayInfo]:
     def callback(
         _monitor: wintypes.HMONITOR,
         _dc: wintypes.HDC,
-        rect_ptr: object,
+        rect_ptr: Any,
         _data: wintypes.LPARAM,
     ) -> int:
         rect = ctypes.cast(
