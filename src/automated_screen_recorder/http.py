@@ -116,7 +116,7 @@ def create_app(
         response_model=RecordingStatus,
     )
     def start(
-            request: StartRequest,
+        request: StartRequest,
     ) -> RecordingStatus:
         """Start a recording once per request identifier."""
         return execute_once(
@@ -130,7 +130,7 @@ def create_app(
         response_model=RecordingStatus,
     )
     def pause(
-            request: ControlRequest,
+        request: ControlRequest,
     ) -> RecordingStatus:
         """Pause the active recording."""
         return execute_once(
@@ -144,7 +144,7 @@ def create_app(
         response_model=RecordingStatus,
     )
     def resume(
-            request: ControlRequest,
+        request: ControlRequest,
     ) -> RecordingStatus:
         """Resume the paused recording."""
         return execute_once(
