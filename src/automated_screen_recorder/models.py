@@ -62,7 +62,8 @@ class RecordingConfig(BaseModel):
     @field_validator("output_path")
     @classmethod
     def absolute_output(cls, value: Path) -> Path:
-        if not value.is_absolute(): raise ValueError("Output path must be absolute.")
+        if not value.is_absolute():
+            raise ValueError("Output path must be absolute.")
         return value
 
     @model_validator(mode="after")

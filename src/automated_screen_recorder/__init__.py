@@ -10,6 +10,27 @@ from automated_screen_recorder.models import (
     RecordingState, RecordingStatus, VideoCodec)
 from automated_screen_recorder.service import ScreenRecorder
 
-__all__ = ["DisplayInfo", "OutputFormat", "RecordingConfig", "RecordingResult", "RecordingState", "RecordingStatus",
-           "ScreenRecorder", "VideoCodec"]
+__all__ = [
+    "CancellationError",
+    "CaptureInitializationError",
+    "DisplayUnavailableError",
+    "EncoderInitializationError",
+    "ExternalProcessError",
+    "InvalidConfigurationError",
+    "InvalidStateTransitionError",
+    "OutputPathError",
+    "RecorderError",
+    "RecordingError",
+    "SaveError",
+
+    "DisplayInfo",
+    "OutputFormat",
+    "RecordingConfig",
+    "RecordingResult",
+    "RecordingState",
+    "RecordingStatus",
+    "VideoCodec",
+
+    "ScreenRecorder",
+]
 __version__ = "0.1.0"
