@@ -8,10 +8,30 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import BinaryIO, Protocol
+from typing import Protocol
 
 from automated_screen_recorder.exceptions import ExternalProcessError
 from automated_screen_recorder.models import DisplayInfo, RecordingConfig
+
+
+class DiagnosticFile(Protocol):
+    """File interface required for FFmpeg diagnostic output."""
+
+    def flush(self) -> None:
+        """Flush pending diagnostic data."""
+        raise NotImplementedError
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        """Move the diagnostic file position."""
+        raise NotImplementedError
+
+    def read(self, n: int = -1) -> bytes:
+        """Read diagnostic bytes."""
+        raise NotImplementedError
+
+    def close(self) -> None:
+        """Close the diagnostic file."""
+        raise NotImplementedError
 
 
 class CaptureProcess(Protocol):
@@ -45,7 +65,7 @@ class FfmpegBackend:
     def __init__(self) -> None:
         """Initialize an inactive FFmpeg backend."""
         self._process: subprocess.Popen[bytes] | None = None
-        self._stderr: BinaryIO | None = None
+        self._stderr: DiagnosticFile | None = None
 
     @staticmethod
     def discover(configured: Path | None) -> Path:
@@ -126,24 +146,24 @@ class FfmpegBackend:
         return command
 
     def _read_stderr(self) -> str:
-        """Read the captured FFmpeg diagnostic output."""
+        """Read captured FFmpeg diagnostic output."""
         stderr_file = self._stderr
         if stderr_file is None:
             return "no diagnostic output"
 
         stderr_file.flush()
         stderr_file.seek(0)
-        data = stderr_file.read()
+        diagnostic = stderr_file.read().decode(
+            "utf-8",
+            errors="replace",
+        )
         return (
-            data.decode(
-                "utf-8",
-                errors="replace",
-            ).strip()[-1000:]
+            diagnostic.strip()[-1000:]
             or "no diagnostic output"
         )
 
     def _close_stderr(self) -> None:
-        """Close the private FFmpeg diagnostic file."""
+        """Close the FFmpeg diagnostic file."""
         stderr_file = self._stderr
         if stderr_file is not None:
             stderr_file.close()
