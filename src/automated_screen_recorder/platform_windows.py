@@ -9,7 +9,7 @@ from automated_screen_recorder.models import DisplayInfo
 
 
 def enumerate_displays() -> list[DisplayInfo]:
-    """Return active monitor rectangles in Windows virtual-screen coordinates."""
+    """Return active Windows displays."""
     if sys.platform != "win32":
         return [
             DisplayInfo(
@@ -22,23 +22,31 @@ def enumerate_displays() -> list[DisplayInfo]:
                 primary=True,
             )
         ]
+
     user32 = ctypes.windll.user32
     displays: list[DisplayInfo] = []
-    monitor_proc = ctypes.WINFUNCTYPE(
+
+    rect_pointer_type = ctypes.POINTER(wintypes.RECT)
+
+    monitor_proc_type = ctypes.WINFUNCTYPE(
         ctypes.c_int,
         wintypes.HMONITOR,
         wintypes.HDC,
-        ctypes.POINTER(wintypes.RECT),
+        rect_pointer_type,
         wintypes.LPARAM,
     )
 
     def callback(
         _monitor: wintypes.HMONITOR,
         _dc: wintypes.HDC,
-        rect_ptr: ctypes.POINTER[wintypes.RECT],
+        rect_ptr: object,
         _data: wintypes.LPARAM,
     ) -> int:
-        rect = rect_ptr.contents
+        rect = ctypes.cast(
+            rect_ptr,
+            rect_pointer_type,
+        ).contents
+
         index = len(displays)
 
         displays.append(
@@ -52,8 +60,24 @@ def enumerate_displays() -> list[DisplayInfo]:
                 primary=rect.left == 0 and rect.top == 0,
             )
         )
+
         return 1
 
-    if not user32.EnumDisplayMonitors(0, 0, monitor_proc(callback), 0) or not displays:
-        raise DisplayUnavailableError("No active display was found.")
+    callback_function = monitor_proc_type(callback)
+
+    if not user32.EnumDisplayMonitors(
+        None,
+        None,
+        callback_function,
+        0,
+    ):
+        raise DisplayUnavailableError(
+            "Windows display enumeration failed."
+        )
+
+    if not displays:
+        raise DisplayUnavailableError(
+            "No active display was found."
+        )
+
     return displays
