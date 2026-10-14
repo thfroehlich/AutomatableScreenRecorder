@@ -1,8 +1,8 @@
 """Stable public package surface."""
-from .exceptions import *
-from .models import (DisplayInfo, OutputFormat, RecordingConfig, RecordingResult, RecordingState, RecordingStatus,
+from automated_screen_recorder.exceptions import *
+from automated_screen_recorder.models import (DisplayInfo, OutputFormat, RecordingConfig, RecordingResult, RecordingState, RecordingStatus,
                      VideoCodec)
-from .service import ScreenRecorder
+from automated_screen_recorder.service import ScreenRecorder
 
 __all__ = ["DisplayInfo", "OutputFormat", "RecordingConfig", "RecordingResult", "RecordingState", "RecordingStatus",
            "ScreenRecorder", "VideoCodec"]

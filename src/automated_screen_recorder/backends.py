@@ -39,9 +39,11 @@ class FfmpegBackend:
                       Path(os.environ["AUTOSCREENREC_FFMPEG"]) if "AUTOSCREENREC_FFMPEG" in os.environ else None,
                       Path.cwd() / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe"]
         found = shutil.which("ffmpeg.exe")
-        if found: candidates.append(Path(found))
+        if found:
+            candidates.append(Path(found))
         for candidate in candidates:
-            if candidate and candidate.is_file(): return candidate.resolve()
+            if candidate and candidate.is_file():
+                return candidate.resolve()
         raise ExternalProcessError(
             "FFmpeg executable was not found. Configure ffmpeg_path or install the local tool bundle.")
 
@@ -69,24 +71,29 @@ class FfmpegBackend:
     def start(self, config: RecordingConfig, display: DisplayInfo, target: Path) -> None:
         self._process = subprocess.Popen(self.command(config, display, target), stdin=subprocess.PIPE,
                                          stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=False)
-        if self._process.poll() is not None: raise ExternalProcessError("FFmpeg terminated during startup.")
+        if self._process.poll() is not None:
+            raise ExternalProcessError("FFmpeg terminated during startup.")
 
     def stop(self, timeout: float) -> None:
         process = self._require()
-        if process.stdin: process.stdin.write(b"q\n"); process.stdin.flush()
+        if process.stdin: process.stdin.write(b"q\n")
+        process.stdin.flush()
         self._wait(process, timeout, False)
-        if process.returncode: raise ExternalProcessError("FFmpeg failed while finalizing the recording.")
+        if process.returncode:
+            raise ExternalProcessError("FFmpeg failed while finalizing the recording.")
         self._process = None
 
     def cancel(self, timeout: float) -> None:
         process = self._process
-        if process is None: return
+        if process is None:
+            return
         process.terminate()
         self._wait(process, timeout, True)
         self._process = None
 
     def _require(self) -> subprocess.Popen[bytes]:
-        if self._process is None: raise ExternalProcessError("FFmpeg process is not running.")
+        if self._process is None:
+            raise ExternalProcessError("FFmpeg process is not running.")
         return self._process
 
     @staticmethod
@@ -96,4 +103,5 @@ class FfmpegBackend:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
-            if not allow_nonzero: raise ExternalProcessError("FFmpeg did not stop within the configured timeout.")
+            if not allow_nonzero:
+                raise ExternalProcessError("FFmpeg did not stop within the configured timeout.")
