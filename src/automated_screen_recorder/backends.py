@@ -276,9 +276,7 @@ class FfmpegBackend:
         if result.returncode or not target.is_file():
             target.unlink(missing_ok=True)
             val = result.stderr.strip()[-1000:] or 'no diagnostic output'
-            raise ExternalProcessError(
-                f"FFmpeg concatenation failed: {val}"
-            )
+            raise ExternalProcessError(f"FFmpeg concatenation failed: {val}")
 
     def _require(self) -> subprocess.Popen[bytes]:
         if self._process is None:
