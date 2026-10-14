@@ -29,7 +29,7 @@ IdempotencyKey = tuple[str, str]
 
 
 def create_app(
-        recorder: ScreenRecorder | None = None,
+    recorder: ScreenRecorder | None = None,
 ) -> FastAPI:
     """Create the optional local HTTP application."""
     service = recorder or ScreenRecorder()
@@ -47,9 +47,9 @@ def create_app(
     ] = OrderedDict()
 
     def execute_once(
-            operation_name: str,
-            request_id: str,
-            operation: Callable[[], ResultType],
+        operation_name: str,
+        request_id: str,
+        operation: Callable[[], ResultType],
     ) -> ResultType:
         """Execute a state-changing request once."""
         key = (
@@ -75,8 +75,8 @@ def create_app(
 
     @app.exception_handler(RecorderError)
     async def recorder_error_handler(
-            _request: Request,
-            error: RecorderError,
+        _request: Request,
+        error: RecorderError,
     ) -> JSONResponse:
         """Return recorder failures as structured JSON."""
         body = ErrorResponse(
@@ -92,8 +92,8 @@ def create_app(
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
-            _request: Request,
-            error: RequestValidationError,
+        _request: Request,
+        error: RequestValidationError,
     ) -> JSONResponse:
         """Return request validation failures as JSON."""
         body = ErrorResponse(
@@ -158,7 +158,7 @@ def create_app(
         response_model=RecordingStatus,
     )
     def stop(
-            request: ControlRequest,
+        request: ControlRequest,
     ) -> RecordingStatus:
         """Stop the active recording."""
         return execute_once(
@@ -172,7 +172,7 @@ def create_app(
         response_model=RecordingStatus,
     )
     def cancel(
-            request: ControlRequest,
+        request: ControlRequest,
     ) -> RecordingStatus:
         """Cancel the current recording."""
         return execute_once(
@@ -186,7 +186,7 @@ def create_app(
         response_model=RecordingResult,
     )
     def save(
-            request: SaveRequest,
+        request: SaveRequest,
     ) -> RecordingResult:
         """Save a stopped recording."""
         return execute_once(
