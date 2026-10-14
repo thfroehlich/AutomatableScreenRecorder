@@ -247,9 +247,10 @@ class FfmpegBackend:
         except subprocess.TimeoutExpired as error:
             process.kill()
             process.wait(timeout=5)
-            if not allow_nonzero: raise ExternalProcessError(
-                "FFmpeg did not stop within the configured timeout."
-            ) from error
+            if not allow_nonzero:
+                raise ExternalProcessError(
+                    "FFmpeg did not stop within the configured timeout."
+                ) from error
 
     def _diagnostic(self) -> str:
         if self._stderr is None:
