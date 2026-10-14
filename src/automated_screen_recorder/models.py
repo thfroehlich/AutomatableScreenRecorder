@@ -5,13 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator
-)
+from pydantic import (BaseModel, ConfigDict, Field, field_validator, model_validator)
 
 
 class RecordingState(StrEnum):

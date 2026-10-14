@@ -32,9 +32,9 @@ class ScreenRecorder:
     """Stable, thread-safe facade for video-only screen recording."""
 
     def __init__(
-            self,
-            backend: CaptureProcess | None = None,
-            storage: RecordingStorage | None = None
+        self,
+        backend: CaptureProcess | None = None,
+        storage: RecordingStorage | None = None,
     ) -> None:
         self._backend = backend or FfmpegBackend()
         self._storage = storage or RecordingStorage()
@@ -55,7 +55,7 @@ class ScreenRecorder:
         if self._machine.state in {
             RecordingState.RECORDING,
             RecordingState.PAUSED,
-            RecordingState.STOPPED
+            RecordingState.STOPPED,
         }:
             self.cancel_recording()
 
@@ -118,9 +118,7 @@ class ScreenRecorder:
                 )
             except Exception as error:
                 self._fail(error)
-                raise RecordingError(
-                    "Recording could not be resumed."
-                ) from error
+                raise RecordingError("Recording could not be resumed.") from error
             self._started = time.monotonic()
             LOGGER.info("Recording resumed", extra=self._context("resume"))
             return self.get_status()
@@ -157,11 +155,7 @@ class ScreenRecorder:
                 config.overwrite,
                 config.create_output_directory,
             )
-            self._storage.save(
-                self._require_temp(),
-                destination,
-                config.overwrite
-            )
+            self._storage.save(self._require_temp(), destination, config.overwrite)
             self._temporary = None
             self._machine.transition(RecordingState.SAVED)
             result = RecordingResult(
@@ -181,10 +175,14 @@ class ScreenRecorder:
                 state=self._machine.state,
                 started_at=self._started_at,
                 elapsed_seconds=self._elapsed + self._running_elapsed(),
-                backend=type(self._backend).__name__, error=self._error)
+                backend=type(self._backend).__name__,
+                error=self._error,
+            )
 
     def _running_elapsed(self) -> float:
-        return 0.0 if self._started is None else max(0.0, time.monotonic() - self._started)
+        return (
+            0.0 if self._started is None else max(0.0, time.monotonic() - self._started)
+        )
 
     def _timeout(self) -> float:
         return self._require_config().stop_timeout_seconds
@@ -205,7 +203,7 @@ class ScreenRecorder:
         if self._machine.state in {
             RecordingState.RECORDING,
             RecordingState.PAUSED,
-            RecordingState.STOPPED
+            RecordingState.STOPPED,
         }:
             self._machine.transition(RecordingState.FAILED)
         self._storage.cleanup()

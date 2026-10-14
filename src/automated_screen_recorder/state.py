@@ -11,21 +11,20 @@ _ALLOWED = {
         RecordingState.PAUSED,
         RecordingState.STOPPED,
         RecordingState.CANCELLED,
-        RecordingState.FAILED
+        RecordingState.FAILED,
     },
     RecordingState.PAUSED: {
         RecordingState.RECORDING,
         RecordingState.STOPPED,
         RecordingState.CANCELLED,
-        RecordingState.FAILED
+        RecordingState.FAILED,
     },
     RecordingState.STOPPED: {
         RecordingState.SAVED,
         RecordingState.CANCELLED,
-        RecordingState.FAILED
+        RecordingState.FAILED,
     },
-    RecordingState.SAVED: {
-        RecordingState.IDLE},
+    RecordingState.SAVED: {RecordingState.IDLE},
     RecordingState.CANCELLED: {RecordingState.IDLE},
     RecordingState.FAILED: {RecordingState.IDLE},
 }

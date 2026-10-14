@@ -1,4 +1,5 @@
 """Stable public package surface."""
+
 from automated_screen_recorder.exceptions import (
     CancellationError,
     CaptureInitializationError,
@@ -10,7 +11,7 @@ from automated_screen_recorder.exceptions import (
     OutputPathError,
     RecorderError,
     RecordingError,
-    SaveError
+    SaveError,
 )
 from automated_screen_recorder.models import (
     DisplayInfo,
@@ -19,7 +20,7 @@ from automated_screen_recorder.models import (
     RecordingResult,
     RecordingState,
     RecordingStatus,
-    VideoCodec
+    VideoCodec,
 )
 from automated_screen_recorder.service import ScreenRecorder
 
@@ -35,7 +36,6 @@ __all__ = [
     "RecorderError",
     "RecordingError",
     "SaveError",
-
     "DisplayInfo",
     "OutputFormat",
     "RecordingConfig",
@@ -43,7 +43,6 @@ __all__ = [
     "RecordingState",
     "RecordingStatus",
     "VideoCodec",
-
     "ScreenRecorder",
 ]
 __version__ = "0.1.0"

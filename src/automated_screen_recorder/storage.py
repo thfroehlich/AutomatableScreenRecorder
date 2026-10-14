@@ -19,7 +19,7 @@ class RecordingStorage:
         return self._directory / f"capture{suffix}"
 
     def validate_destination(
-            self, path: Path, overwrite: bool, create_directory: bool
+        self, path: Path, overwrite: bool, create_directory: bool
     ) -> None:
         parent = path.parent
         if not parent.exists():
@@ -33,7 +33,7 @@ class RecordingStorage:
             raise OutputPathError("Output file already exists.")
 
     def save(
-            self, source: Path, destination: Path, overwrite: bool
+        self, source: Path, destination: Path, overwrite: bool
     ) -> None:
         if not source.is_file():
             raise SaveError("Temporary recording is missing.")

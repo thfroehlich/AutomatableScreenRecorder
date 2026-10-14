@@ -8,6 +8,8 @@ config = RecordingConfig(
 with ScreenRecorder() as recorder:
     displays = recorder.enumerate_displays()
     print(displays)
-    recorder.start_recording(config.model_copy(update={"display_index": displays[-1].index}))
+    recorder.start_recording(
+        config.model_copy(update={"display_index": displays[-1].index})
+    )
     recorder.stop_recording()
     recorder.save_recording()

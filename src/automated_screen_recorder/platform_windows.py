@@ -29,11 +29,10 @@ def enumerate_displays() -> list[DisplayInfo]:
         wintypes.HMONITOR,
         wintypes.HDC,
         ctypes.POINTER(wintypes.RECT),
-        wintypes.LPARAM)
+        wintypes.LPARAM,
+    )
 
-    def callback(
-            _monitor: object, _dc: object, rect_ptr: object, _data: object
-    ) -> int:
+    def callback(_monitor: object, _dc: object, rect_ptr: object, _data: object) -> int:
         rect = rect_ptr.contents
         index = len(displays)
         displays.append(

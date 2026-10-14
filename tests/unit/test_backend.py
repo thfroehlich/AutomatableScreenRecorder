@@ -24,7 +24,7 @@ def test_command_has_no_audio_and_no_shell(tmp_path):
         primary=True,
     )
     with patch.object(
-            FfmpegBackend, "validate_version", return_value="ffmpeg version test"
+        FfmpegBackend, "validate_version", return_value="ffmpeg version test"
     ):
         command = FfmpegBackend().command(config, display, tmp_path / "temp.mp4")
     assert "-an" in command and command[0] == str(executable.resolve())

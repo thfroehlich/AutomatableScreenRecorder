@@ -15,7 +15,8 @@ from automated_screen_recorder.exceptions import (
 
 
 class FakeBackend:
-    def __init__(self): self.running = False
+    def __init__(self):
+        self.running = False
 
     def command(self, config, display, target):
         return ["ffmpeg.exe", "-an", str(target)]
@@ -32,16 +33,12 @@ class FakeBackend:
 
 
 def config(tmp_path: Path) -> RecordingConfig:
-    return RecordingConfig(
-        output_path=(tmp_path / "out.mp4").resolve()
-    )
+    return RecordingConfig(output_path=(tmp_path / "out.mp4").resolve())
 
 
 def test_model_validation(tmp_path):
     with pytest.raises(ValidationError):
-        RecordingConfig(
-            output_path=Path("relative.mp4")
-        )
+        RecordingConfig(output_path=Path("relative.mp4"))
 
 
 def test_lifecycle_and_save(tmp_path):
@@ -76,9 +73,7 @@ def test_prevent_overwrite(tmp_path):
 
     with pytest.raises(OutputPathError):
         ScreenRecorder(FakeBackend()).start_recording(
-            RecordingConfig(
-                output_path=target.resolve()
-            )
+            RecordingConfig(output_path=target.resolve())
         )
 
 

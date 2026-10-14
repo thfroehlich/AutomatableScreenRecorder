@@ -16,7 +16,7 @@ class CaptureProcess(Protocol):
     """Minimal process adapter used by the service."""
 
     def start(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> None:
         raise NotImplementedError
 
@@ -27,7 +27,7 @@ class CaptureProcess(Protocol):
         raise NotImplementedError
 
     def command(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> list[str]:
         raise NotImplementedError
 
@@ -42,7 +42,9 @@ class FfmpegBackend:
     def discover(configured: Path | None) -> Path:
         candidates = [
             configured,
-            Path(os.environ["AUTOSCREENREC_FFMPEG"]) if "AUTOSCREENREC_FFMPEG" in os.environ else None,
+            Path(os.environ["AUTOSCREENREC_FFMPEG"])
+            if "AUTOSCREENREC_FFMPEG" in os.environ
+            else None,
             Path.cwd() / "tools" / "ffmpeg" / "bin" / "ffmpeg.exe",
         ]
         found = shutil.which("ffmpeg.exe")
@@ -70,7 +72,7 @@ class FfmpegBackend:
         return result.stdout.splitlines()[0]
 
     def command(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> list[str]:
         executable = self.discover(config.ffmpeg_path)
         self.validate_version(executable)
@@ -100,7 +102,7 @@ class FfmpegBackend:
         if config.width is not None:
             command += [
                 "-vf",
-                f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease,pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2"
+                f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease,pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2",
             ]
         command += [
             "-c:v",
@@ -114,7 +116,7 @@ class FfmpegBackend:
         return command
 
     def start(
-            self, config: RecordingConfig, display: DisplayInfo, target: Path
+        self, config: RecordingConfig, display: DisplayInfo, target: Path
     ) -> None:
         self._process = subprocess.Popen(
             self.command(config, display, target),
@@ -151,7 +153,7 @@ class FfmpegBackend:
 
     @staticmethod
     def _wait(
-            process: subprocess.Popen[bytes], timeout: float, allow_nonzero: bool
+        process: subprocess.Popen[bytes], timeout: float, allow_nonzero: bool
     ) -> None:
         try:
             process.wait(timeout=timeout)
