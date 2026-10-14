@@ -1,4 +1,5 @@
 """Windows display enumeration isolated from portable code."""
+
 import ctypes
 import sys
 from ctypes import wintypes
@@ -14,9 +15,12 @@ def enumerate_displays() -> list[DisplayInfo]:
             DisplayInfo(
                 index=0,
                 name="Synthetic primary display",
-                left=0, top=0,
-                width=1920, height=1080,
-                primary=True)
+                left=0,
+                top=0,
+                width=1920,
+                height=1080,
+                primary=True,
+            )
         ]
     user32 = ctypes.windll.user32
     displays: list[DisplayInfo] = []
@@ -27,12 +31,22 @@ def enumerate_displays() -> list[DisplayInfo]:
         ctypes.POINTER(wintypes.RECT),
         wintypes.LPARAM)
 
-    def callback(_monitor: object, _dc: object, rect_ptr: object, _data: object) -> int:
+    def callback(
+            _monitor: object, _dc: object, rect_ptr: object, _data: object
+    ) -> int:
         rect = rect_ptr.contents
         index = len(displays)
-        displays.append(DisplayInfo(index=index, name=f"Display {index}", left=rect.left, top=rect.top,
-                                    width=rect.right - rect.left, height=rect.bottom - rect.top,
-                                    primary=rect.left == 0 and rect.top == 0))
+        displays.append(
+            DisplayInfo(
+                index=index,
+                name=f"Display {index}",
+                left=rect.left,
+                top=rect.top,
+                width=rect.right - rect.left,
+                height=rect.bottom - rect.top,
+                primary=rect.left == 0 and rect.top == 0,
+            )
+        )
         return 1
 
     if not user32.EnumDisplayMonitors(0, 0, monitor_proc(callback), 0) or not displays:

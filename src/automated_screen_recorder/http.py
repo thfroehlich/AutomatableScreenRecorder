@@ -1,4 +1,5 @@
 """Optional localhost HTTP adapter."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,7 +11,8 @@ from automated_screen_recorder.models import (
     ControlRequest,
     ErrorResponse,
     SaveRequest,
-    StartRequest)
+    StartRequest,
+)
 from automated_screen_recorder.service import ScreenRecorder
 
 
@@ -20,7 +22,9 @@ def create_app(recorder: ScreenRecorder | None = None):
         from fastapi import FastAPI, Request
         from fastapi.responses import JSONResponse
     except ImportError as error:
-        raise RuntimeError("Install the 'http' optional dependency to use the HTTP API.") from error
+        raise RuntimeError(
+            "Install the 'http' optional dependency to use the HTTP API."
+        ) from error
     service = recorder or ScreenRecorder()
     app = FastAPI(title="Win Screen Recorder", version="0.1.0")
     lock = threading.RLock()
@@ -38,8 +42,15 @@ def create_app(recorder: ScreenRecorder | None = None):
 
     @app.exception_handler(Exception)
     async def error_handler(_request: Request, error: Exception):
-        body = ErrorResponse(error_type=type(error).__name__, message=str(error), state=service.get_status().state)
-        return JSONResponse(status_code=409, content=body.model_dump(mode="json"))
+        body = ErrorResponse(
+            error_type=type(error).__name__,
+            message=str(error),
+            state=service.get_status().state,
+        )
+        return JSONResponse(
+            status_code=409,
+            content=body.model_dump(mode="json"),
+        )
 
     @app.post("/recordings/start")
     def start(request: StartRequest):
@@ -63,7 +74,9 @@ def create_app(recorder: ScreenRecorder | None = None):
 
     @app.post("/recordings/save")
     def save(request: SaveRequest):
-        return once(request.request_id, lambda: service.save_recording(request.output_path))
+        return once(
+            request.request_id, lambda: service.save_recording(request.output_path)
+        )
 
     @app.get("/recordings/status")
     def status():
@@ -78,9 +91,12 @@ def create_app(recorder: ScreenRecorder | None = None):
 
 def main() -> None:
     """Start the optional server; default is loopback only."""
-    parser = argparse.ArgumentParser(description="Run the local screen recorder HTTP API.")
+    parser = argparse.ArgumentParser(
+        description="Run the local screen recorder HTTP API."
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     arguments = parser.parse_args()
     import uvicorn
+
     uvicorn.run(create_app(), host=arguments.host, port=arguments.port)

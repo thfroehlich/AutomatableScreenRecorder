@@ -25,7 +25,9 @@ FFmpeg is required at runtime. Set `ffmpeg_path` explicitly, set `AUTOSCREENREC_
 from pathlib import Path
 from automated_screen_recorder import RecordingConfig, ScreenRecorder
 
-config = RecordingConfig(output_path=Path(r"C:\Recordings\demo.mp4"), create_output_directory=True)
+config = RecordingConfig(
+    output_path=Path(r"C:\Recordings\demo.mp4"), create_output_directory=True
+)
 with ScreenRecorder() as recorder:
     print(recorder.enumerate_displays())
     recorder.start_recording(config)

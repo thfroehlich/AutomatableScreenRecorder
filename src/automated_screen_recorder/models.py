@@ -1,14 +1,22 @@
 """Validated public models."""
+
 from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator
+)
 
 
 class RecordingState(StrEnum):
     """Lifecycle states for one recording session."""
+
     IDLE = "idle"
     RECORDING = "recording"
     PAUSED = "paused"
@@ -20,12 +28,14 @@ class RecordingState(StrEnum):
 
 class OutputFormat(StrEnum):
     """Supported output containers."""
+
     MP4 = "mp4"
     MKV = "mkv"
 
 
 class VideoCodec(StrEnum):
     """Supported FFmpeg video encoders."""
+
     H264 = "libx264"
     H264_NVENC = "h264_nvenc"
     H264_QSV = "h264_qsv"
@@ -33,6 +43,7 @@ class VideoCodec(StrEnum):
 
 class DisplayInfo(BaseModel):
     """Windows display geometry."""
+
     model_config = ConfigDict(frozen=True)
     index: int = Field(ge=0)
     name: str
@@ -45,6 +56,7 @@ class DisplayInfo(BaseModel):
 
 class RecordingConfig(BaseModel):
     """Validated recording configuration."""
+
     model_config = ConfigDict(frozen=True)
     output_path: Path
     display_index: int = Field(default=0, ge=0)
@@ -77,6 +89,7 @@ class RecordingConfig(BaseModel):
 
 class RecordingStatus(BaseModel):
     """Thread-safe status snapshot."""
+
     session_id: str | None = None
     state: RecordingState = RecordingState.IDLE
     started_at: str | None = None
@@ -89,6 +102,7 @@ class RecordingStatus(BaseModel):
 
 class RecordingResult(BaseModel):
     """Result returned after save."""
+
     session_id: str
     output_path: Path
     duration_seconds: float = Field(ge=0)
@@ -98,6 +112,7 @@ class RecordingResult(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Structured HTTP error response."""
+
     error_type: str
     message: str
     state: RecordingState
@@ -105,15 +120,18 @@ class ErrorResponse(BaseModel):
 
 class StartRequest(BaseModel):
     """HTTP start body with idempotency key."""
+
     request_id: str = Field(min_length=8, max_length=128)
     config: RecordingConfig
 
 
 class ControlRequest(BaseModel):
     """HTTP state-change body with idempotency key."""
+
     request_id: str = Field(min_length=8, max_length=128)
 
 
 class SaveRequest(ControlRequest):
     """HTTP save body."""
+
     output_path: Path | None = None

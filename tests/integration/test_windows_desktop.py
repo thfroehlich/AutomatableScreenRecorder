@@ -7,12 +7,15 @@ import pytest
 
 from automated_screen_recorder import (
     RecordingConfig,
-    ScreenRecorder)
+    ScreenRecorder,
+)
 
 
 @pytest.mark.windows_desktop
-@pytest.mark.skipif(sys.platform != "win32" or os.getenv("AUTOSCREENREC_RUN_DESKTOP_TESTS") != "1",
-                    reason="Requires an opted-in interactive Windows desktop and FFmpeg.")
+@pytest.mark.skipif(
+    sys.platform != "win32" or os.getenv("AUTOSCREENREC_RUN_DESKTOP_TESTS") != "1",
+    reason="Requires an opted-in interactive Windows desktop and FFmpeg."
+)
 def test_real_recording(tmp_path: Path):
     output = (tmp_path / "real.mp4").resolve()
     with ScreenRecorder() as recorder:

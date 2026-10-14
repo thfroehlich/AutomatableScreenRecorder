@@ -1,4 +1,5 @@
 """Recording application service."""
+
 from __future__ import annotations
 
 import logging
@@ -9,13 +10,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from automated_screen_recorder.backends import CaptureProcess, FfmpegBackend
-from automated_screen_recorder.exceptions import DisplayUnavailableError, RecordingError
+from automated_screen_recorder.exceptions import (
+    DisplayUnavailableError,
+    RecordingError,
+)
 from automated_screen_recorder.models import (
     DisplayInfo,
     RecordingConfig,
     RecordingResult,
     RecordingState,
-    RecordingStatus)
+    RecordingStatus,
+)
 from automated_screen_recorder.platform_windows import enumerate_displays
 from automated_screen_recorder.state import RecordingStateMachine
 from automated_screen_recorder.storage import RecordingStorage
@@ -26,7 +31,11 @@ LOGGER = logging.getLogger(__name__)
 class ScreenRecorder:
     """Stable, thread-safe facade for video-only screen recording."""
 
-    def __init__(self, backend: CaptureProcess | None = None, storage: RecordingStorage | None = None) -> None:
+    def __init__(
+            self,
+            backend: CaptureProcess | None = None,
+            storage: RecordingStorage | None = None
+    ) -> None:
         self._backend = backend or FfmpegBackend()
         self._storage = storage or RecordingStorage()
         self._machine = RecordingStateMachine()
@@ -43,8 +52,11 @@ class ScreenRecorder:
         return self
 
     def __exit__(self, *_args: object) -> None:
-        if self._machine.state in {RecordingState.RECORDING, RecordingState.PAUSED,
-                                   RecordingState.STOPPED}:
+        if self._machine.state in {
+            RecordingState.RECORDING,
+            RecordingState.PAUSED,
+            RecordingState.STOPPED
+        }:
             self.cancel_recording()
 
     def enumerate_displays(self) -> list[DisplayInfo]:
@@ -52,11 +64,17 @@ class ScreenRecorder:
 
     def start_recording(self, config: RecordingConfig) -> RecordingStatus:
         with self._lock:
-            if self._machine.state in {RecordingState.SAVED, RecordingState.CANCELLED,
-                                       RecordingState.FAILED}:
+            if self._machine.state in {
+                RecordingState.SAVED,
+                RecordingState.CANCELLED,
+                RecordingState.FAILED,
+            }:
                 self._machine.reset()
             self._storage.validate_destination(
-                config.output_path, config.overwrite, config.create_output_directory)
+                config.output_path,
+                config.overwrite,
+                config.create_output_directory,
+            )
             displays = self.enumerate_displays()
             if config.display_index >= len(displays):
                 raise DisplayUnavailableError("Selected display is unavailable.")
@@ -68,7 +86,11 @@ class ScreenRecorder:
             self._elapsed = 0
             self._error = None
             try:
-                self._backend.start(config, displays[config.display_index], self._temporary)
+                self._backend.start(
+                    config=config,
+                    display=displays[config.display_index],
+                    target=self._temporary,
+                )
                 self._machine.transition(RecordingState.RECORDING)
             except Exception as error:
                 self._fail(error)
@@ -89,12 +111,16 @@ class ScreenRecorder:
         with self._lock:
             self._machine.transition(RecordingState.RECORDING)
             try:
-                self._backend.start(self._require_config(),
-                                    self.enumerate_displays()[self._require_config().display_index],
-                                    self._require_temp())
+                self._backend.start(
+                    self._require_config(),
+                    self.enumerate_displays()[self._require_config().display_index],
+                    self._require_temp(),
+                )
             except Exception as error:
                 self._fail(error)
-                raise RecordingError("Recording could not be resumed.") from error
+                raise RecordingError(
+                    "Recording could not be resumed."
+                ) from error
             self._started = time.monotonic()
             LOGGER.info("Recording resumed", extra=self._context("resume"))
             return self.get_status()
@@ -127,8 +153,15 @@ class ScreenRecorder:
             config = self._require_config()
             destination = output_path or config.output_path
             self._storage.validate_destination(
-                destination, config.overwrite, config.create_output_directory)
-            self._storage.save(self._require_temp(), destination, config.overwrite)
+                destination,
+                config.overwrite,
+                config.create_output_directory,
+            )
+            self._storage.save(
+                self._require_temp(),
+                destination,
+                config.overwrite
+            )
             self._temporary = None
             self._machine.transition(RecordingState.SAVED)
             result = RecordingResult(
@@ -169,8 +202,11 @@ class ScreenRecorder:
     def _fail(self, error: Exception) -> None:
         self._error = str(error)
         self._started = None
-        if self._machine.state in {RecordingState.RECORDING, RecordingState.PAUSED,
-                                   RecordingState.STOPPED}:
+        if self._machine.state in {
+            RecordingState.RECORDING,
+            RecordingState.PAUSED,
+            RecordingState.STOPPED
+        }:
             self._machine.transition(RecordingState.FAILED)
         self._storage.cleanup()
 

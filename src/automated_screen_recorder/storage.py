@@ -1,4 +1,5 @@
 """Secure temporary and final output handling."""
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -17,7 +18,9 @@ class RecordingStorage:
         self._directory = Path(tempfile.mkdtemp(prefix="autoscreenrec-"))
         return self._directory / f"capture{suffix}"
 
-    def validate_destination(self, path: Path, overwrite: bool, create_directory: bool) -> None:
+    def validate_destination(
+            self, path: Path, overwrite: bool, create_directory: bool
+    ) -> None:
         parent = path.parent
         if not parent.exists():
             if create_directory:
@@ -29,7 +32,9 @@ class RecordingStorage:
         if path.exists() and not overwrite:
             raise OutputPathError("Output file already exists.")
 
-    def save(self, source: Path, destination: Path, overwrite: bool) -> None:
+    def save(
+            self, source: Path, destination: Path, overwrite: bool
+    ) -> None:
         if not source.is_file():
             raise SaveError("Temporary recording is missing.")
         try:
@@ -40,7 +45,9 @@ class RecordingStorage:
                     shutil.copyfileobj(input_file, output, 1024 * 1024)
                 source.unlink()
         except OSError as error:
-            raise SaveError("Recording could not be saved to the output path.") from error
+            raise SaveError(
+                "Recording could not be saved to the output path."
+            ) from error
         self.cleanup()
 
     def cleanup(self) -> None:
