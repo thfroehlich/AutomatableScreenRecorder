@@ -24,10 +24,12 @@ def create_app(recorder: ScreenRecorder | None = None):
 
     def once(key: str, operation: Callable[[], object]) -> object:
         with lock:
-            if key in cache: return cache[key]
+            if key in cache:
+                return cache[key]
             result = operation()
             cache[key] = result
-            while len(cache) > 256: cache.popitem(last=False)
+            while len(cache) > 256:
+                cache.popitem(last=False)
             return result
 
     @app.exception_handler(Exception)

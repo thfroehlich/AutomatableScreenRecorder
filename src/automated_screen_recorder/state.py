@@ -17,11 +17,14 @@ _ALLOWED = {RecordingState.IDLE: {RecordingState.RECORDING},
 class RecordingStateMachine:
     """Serialize and validate lifecycle changes."""
 
-    def __init__(self) -> None: self._state = RecordingState.IDLE; self._lock = RLock()
+    def __init__(self) -> None:
+        self._state = RecordingState.IDLE
+        self._lock = RLock()
 
     @property
     def state(self) -> RecordingState:
-        with self._lock: return self._state
+        with self._lock:
+            return self._state
 
     def transition(self, target: RecordingState) -> None:
         with self._lock:
@@ -29,4 +32,5 @@ class RecordingStateMachine:
                 raise InvalidStateTransitionError(f"Cannot transition from {self._state.value} to {target.value}.")
             self._state = target
 
-    def reset(self) -> None: self.transition(RecordingState.IDLE)
+    def reset(self) -> None:
+        self.transition(RecordingState.IDLE)

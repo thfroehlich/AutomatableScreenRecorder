@@ -2,27 +2,35 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from automated_screen_recorder.exceptions import InvalidStateTransitionError, OutputPathError
+
 from automated_screen_recorder import RecordingConfig, RecordingState, ScreenRecorder
+from automated_screen_recorder.exceptions import InvalidStateTransitionError, OutputPathError
 
 
 class FakeBackend:
     def __init__(self): self.running = False
 
-    def command(self, config, display, target): return ["ffmpeg.exe", "-an", str(target)]
+    def command(self, config, display, target):
+        return ["ffmpeg.exe", "-an", str(target)]
 
-    def start(self, config, display, target): self.running = True; target.write_bytes(b"video")
+    def start(self, config, display, target):
+        self.running = True
+        target.write_bytes(b"video")
 
-    def stop(self, timeout): self.running = False
+    def stop(self, timeout):
+        self.running = False
 
-    def cancel(self, timeout): self.running = False
+    def cancel(self, timeout):
+        self.running = False
 
 
-def config(tmp_path: Path) -> RecordingConfig: return RecordingConfig(output_path=(tmp_path / "out.mp4").resolve())
+def config(tmp_path: Path) -> RecordingConfig:
+    return RecordingConfig(output_path=(tmp_path / "out.mp4").resolve())
 
 
 def test_model_validation(tmp_path):
-    with pytest.raises(ValidationError): RecordingConfig(output_path=Path("relative.mp4"))
+    with pytest.raises(ValidationError):
+        RecordingConfig(output_path=Path("relative.mp4"))
 
 
 def test_lifecycle_and_save(tmp_path):
@@ -43,14 +51,16 @@ def test_cancel_cleans_temporary(tmp_path):
 
 
 def test_invalid_transition():
-    with pytest.raises(InvalidStateTransitionError): ScreenRecorder(FakeBackend()).stop_recording()
+    with pytest.raises(InvalidStateTransitionError):
+        ScreenRecorder(FakeBackend()).stop_recording()
 
 
 def test_prevent_overwrite(tmp_path):
     target = tmp_path / "out.mp4"
     target.write_bytes(b"old")
-    with pytest.raises(OutputPathError): ScreenRecorder(FakeBackend()).start_recording(
-        RecordingConfig(output_path=target.resolve()))
+    with pytest.raises(OutputPathError):
+        ScreenRecorder(FakeBackend()).start_recording(
+            RecordingConfig(output_path=target.resolve()))
 
 
 def test_public_import():

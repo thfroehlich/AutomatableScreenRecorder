@@ -1,14 +1,16 @@
-from automated_screen_recorder.http import create_app
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+
 from automated_screen_recorder import ScreenRecorder
+from automated_screen_recorder.http import create_app
 
 
 class FakeBackend:
     def command(self, *args): return []
 
-    def start(self, config, display, target): target.write_bytes(b"video")
+    def start(self, config, display, target):
+        target.write_bytes(b"video")
 
     def stop(self, timeout): return None
 

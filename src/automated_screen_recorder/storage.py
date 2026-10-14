@@ -24,11 +24,14 @@ class RecordingStorage:
                 parent.mkdir(parents=True, exist_ok=True)
             else:
                 raise OutputPathError("Output directory does not exist.")
-        if not parent.is_dir(): raise OutputPathError("Output parent is not a directory.")
-        if path.exists() and not overwrite: raise OutputPathError("Output file already exists.")
+        if not parent.is_dir():
+            raise OutputPathError("Output parent is not a directory.")
+        if path.exists() and not overwrite:
+            raise OutputPathError("Output file already exists.")
 
     def save(self, source: Path, destination: Path, overwrite: bool) -> None:
-        if not source.is_file(): raise SaveError("Temporary recording is missing.")
+        if not source.is_file():
+            raise SaveError("Temporary recording is missing.")
         try:
             if overwrite:
                 source.replace(destination)
@@ -41,5 +44,6 @@ class RecordingStorage:
         self.cleanup()
 
     def cleanup(self) -> None:
-        if self._directory and self._directory.exists(): shutil.rmtree(self._directory)
+        if self._directory and self._directory.exists():
+            shutil.rmtree(self._directory)
         self._directory = None
