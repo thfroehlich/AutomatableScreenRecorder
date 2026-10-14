@@ -138,8 +138,7 @@ class FfmpegBackend:
             data.decode(
                 "utf-8",
                 errors="replace",
-            )
-            .strip()[-1000:]
+            ).strip()[-1000:]
             or "no diagnostic output"
         )
 
