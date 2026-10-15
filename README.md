@@ -1,4 +1,4 @@
-# Automated Screen Recorder
+# Automatable Screen Recorder
 
 Local, video-only Windows screen recording for Python 3.11 or newer. The recorder supports three explicit operating modes and can be controlled through Python, an interactive CLI, or an optional localhost REST API.
 
