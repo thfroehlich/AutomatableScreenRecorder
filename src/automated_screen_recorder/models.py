@@ -100,7 +100,9 @@ class RecordingConfig(BaseModel):
             return value
         configured_interval = value.get("interval_seconds")
         if configured_interval is not None and configured_interval != legacy_interval:
-            raise ValueError("save_interval_seconds and interval_seconds must match when both are provided.")
+            raise ValueError(
+                "save_interval_seconds and interval_seconds must match when both are provided."
+            )
         configured_mode = value.get("mode", RecordingMode.NORMAL)
         if configured_mode not in {
             RecordingMode.NORMAL,
@@ -108,7 +110,9 @@ class RecordingConfig(BaseModel):
             RecordingMode.NORMAL.value,
             RecordingMode.INTERVAL.value,
         }:
-            raise ValueError("save_interval_seconds cannot be combined with replay mode.")
+            raise ValueError(
+                "save_interval_seconds cannot be combined with replay mode."
+            )
         migrated = dict(value)
         migrated["mode"] = RecordingMode.INTERVAL
         migrated["interval_seconds"] = legacy_interval
