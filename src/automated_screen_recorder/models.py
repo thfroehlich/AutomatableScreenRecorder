@@ -78,7 +78,7 @@ class RecordingConfig(BaseModel):
     stop_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
     replay_buffer_seconds: float = Field(default=60.0, ge=5.0, le=3600.0)
     replay_segment_seconds: float = Field(default=2.0, ge=0.5, le=30.0)
-    interval_seconds: float | None = Field(default=None, ge=1.0, le=86400.0)
+    interval_seconds: float | None = Field(default=None, ge=0.1, le=86400.0)
     # Compatibility input for releases before the explicit mode model.
     # New code should use mode="interval" and interval_seconds.
     save_interval_seconds: float | None = Field(
