@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve Automated Screen Recorder. Contributions should preserve the project's local-only, video-only design and keep the public API predictable and testable.
+Thank you for helping improve Automatable Screen Recorder. Contributions should preserve the project's local-only, video-only design and keep the public API predictable and testable.
 
 ## Development requirements
 

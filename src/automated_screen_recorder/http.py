@@ -34,7 +34,7 @@ def create_app(recorder: ScreenRecorder | None = None) -> FastAPI:
     """Create the local automation API."""
     service = recorder or ScreenRecorder()
     app = FastAPI(
-        title="Automated Screen Recorder",
+        title="Automatable Screen Recorder",
         version=automated_screen_recorder.__version__,
         docs_url="/docs",
         redoc_url="/redoc",

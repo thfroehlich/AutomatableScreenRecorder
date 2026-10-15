@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest released version of Automated Screen Recorder.
+Security fixes are provided for the latest released version of Automatable Screen Recorder.
 
 ## Reporting a vulnerability
 
@@ -17,7 +17,7 @@ When reporting a vulnerability:
 
 ## Security boundaries
 
-Automated Screen Recorder is designed around the following boundaries:
+Automatable Screen Recorder is designed around the following boundaries:
 
 - normal recording processing is local;
 - screen pixels are the intended capture input;
