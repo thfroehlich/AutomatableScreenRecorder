@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+import automated_screen_recorder
 from automated_screen_recorder.exceptions import RecorderError
 from automated_screen_recorder.models import (
     ControlRequest,
@@ -32,7 +33,13 @@ IdempotencyKey = tuple[str, str]
 def create_app(recorder: ScreenRecorder | None = None) -> FastAPI:
     """Create the local automation API."""
     service = recorder or ScreenRecorder()
-    app = FastAPI(title="Automated Screen Recorder", version="0.4.0")
+    app = FastAPI(
+        title="Automated Screen Recorder",
+        version=automated_screen_recorder.__version__,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+    )
     cache_lock = threading.RLock()
     cache: OrderedDict[IdempotencyKey, object] = OrderedDict()
 

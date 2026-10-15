@@ -2,7 +2,6 @@
 
 Local, video-only Windows screen recording for Python 3.11 or newer. The recorder supports three explicit operating modes and can be controlled through Python, an interactive CLI, or an optional localhost REST API.
 
-> The retrospective mode is named **Replay** rather than “Time Travel”. “Replay buffer” describes the behavior directly: the application continuously keeps only the most recent time window and saves that window when triggered.
 
 ## Recording modes
 
@@ -303,6 +302,8 @@ Invoke-RestMethod `
 | `POST` | `/recordings/cancel` | Cancel and clean temporary artifacts |
 | `GET` | `/recordings/status` | Return state, mode, buffer duration, and outputs |
 | `GET` | `/displays` | Enumerate displays |
+| `GET` | `/docs` | Swagger API Doc |
+| `GET` | `/redoc` | ReDoc API Doc |
 
 ## Configuration reference
 
