@@ -196,7 +196,9 @@ class ScreenRecorder:
                 self._storage.cleanup()
                 self._machine.transition(RecordingState.SAVED)
             except Exception as error:
-                self._set_failed(error, cleanup=False)
+                # Keep STOPPED and retain temporary segments. The caller can
+                # correct the destination or a transient filesystem problem
+                # and retry save_recording().
                 raise SaveError("Recording could not be saved.") from error
             LOGGER.info("Recording saved", extra=self._context("save"))
             return result
@@ -466,13 +468,20 @@ class ScreenRecorder:
             config.create_output_directory,
         )
         assembled = self._storage.create_assembled(f".{config.output_format.value}")
-        self._backend.concatenate(
-            config,
-            [entry.path for entry in entries],
-            assembled,
-            start_offset_seconds=start_offset_seconds,
-            maximum_duration_seconds=maximum_duration_seconds,
-        )
+        segment_paths = [entry.path for entry in entries]
+        if start_offset_seconds == 0.0 and maximum_duration_seconds is None:
+            # Preserve compatibility with injected backends that implement the
+            # original three-argument concatenate contract. Tail trimming is
+            # required only for replay snapshots.
+            self._backend.concatenate(config, segment_paths, assembled)
+        else:
+            self._backend.concatenate(
+                config,
+                segment_paths,
+                assembled,
+                start_offset_seconds=start_offset_seconds,
+                maximum_duration_seconds=maximum_duration_seconds,
+            )
         self._storage.commit(assembled, destination, config.overwrite)
         self._storage.remove(assembled)
         self._saved_outputs.append(destination)
