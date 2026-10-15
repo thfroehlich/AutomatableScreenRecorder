@@ -70,9 +70,7 @@ The method is valid only in replay mode and while the session is recording, paus
 An explicit destination may be supplied:
 
 ```python
-result = recorder.save_replay_buffer(
-    Path(r"C:\Recordings\incident-42.mp4")
-)
+result = recorder.save_replay_buffer(Path(r"C:\Recordings\incident-42.mp4"))
 ```
 
 ## `RecordingStatus`

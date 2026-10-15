@@ -484,9 +484,7 @@ class ScreenRecorder:
             duration_seconds=duration_seconds,
             file_size_bytes=destination.stat().st_size,
             total_file_size_bytes=sum(
-                path.stat().st_size
-                for path in self._saved_outputs
-                if path.is_file()
+                path.stat().st_size for path in self._saved_outputs if path.is_file()
             ),
             codec=config.codec,
         )

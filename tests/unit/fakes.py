@@ -51,7 +51,5 @@ class FakeBackend:
         maximum_duration_seconds: float | None = None,
     ) -> None:
         del config
-        self.concatenate_calls.append(
-            (start_offset_seconds, maximum_duration_seconds)
-        )
+        self.concatenate_calls.append((start_offset_seconds, maximum_duration_seconds))
         target.write_bytes(b"|".join(path.read_bytes() for path in segments))

@@ -78,8 +78,7 @@ class FfmpegBackend:
             if candidate is not None and candidate.is_file():
                 return candidate.resolve()
         raise ExternalProcessError(
-            "FFmpeg was not found. Configure ffmpeg_path or "
-            "AUTOSCREENREC_FFMPEG."
+            "FFmpeg was not found. Configure ffmpeg_path or AUTOSCREENREC_FFMPEG."
         )
 
     @staticmethod
@@ -97,9 +96,7 @@ class FfmpegBackend:
         except (OSError, subprocess.SubprocessError) as error:
             raise ExternalProcessError("FFmpeg version validation failed.") from error
         if result.returncode != 0 or not result.stdout.startswith("ffmpeg version"):
-            raise ExternalProcessError(
-                "The configured FFmpeg executable is invalid."
-            )
+            raise ExternalProcessError("The configured FFmpeg executable is invalid.")
         return result.stdout.splitlines()[0]
 
     def command(
@@ -288,9 +285,7 @@ class FfmpegBackend:
         if result.returncode != 0 or not target.is_file():
             target.unlink(missing_ok=True)
             diagnostic = result.stderr.strip()[-1000:] or "no diagnostic output"
-            raise ExternalProcessError(
-                f"FFmpeg concatenation failed: {diagnostic}"
-            )
+            raise ExternalProcessError(f"FFmpeg concatenation failed: {diagnostic}")
 
     def _require_process(self) -> subprocess.Popen[bytes]:
         if self._process is None:
