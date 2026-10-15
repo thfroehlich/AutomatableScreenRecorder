@@ -105,7 +105,7 @@ jobs:
             )
           }
 
-      - name: Build standalone executable
+      - name: Build recorder CLI executable
         shell: pwsh
         run: |
           python -m PyInstaller `
@@ -118,45 +118,118 @@ jobs:
             --collect-submodules automated_screen_recorder `
             scripts/standalone_entry.py
 
-      - name: Verify generated executable
+      - name: Build REST API executable
         shell: pwsh
         run: |
-          $ExecutablePath = "dist/autoscreenrec.exe"
+          python -m PyInstaller `
+            --clean `
+            --noconfirm `
+            --onefile `
+            --console `
+            --name autoscreenrec-http `
+            --paths src `
+            --collect-submodules automated_screen_recorder `
+            --collect-submodules fastapi `
+            --collect-submodules uvicorn `
+            scripts/http_standalone_entry.py
 
-          if (-not (Test-Path $ExecutablePath)) {
-            throw (
-              "The standalone Windows executable " +
-              "was not generated."
+      - name: Verify generated executables
+        shell: pwsh
+        run: |
+          $Executables = @(
+            "dist/autoscreenrec.exe",
+            "dist/autoscreenrec-http.exe"
+          )
+
+          foreach ($ExecutablePath in $Executables) {
+            if (-not (Test-Path $ExecutablePath)) {
+              throw (
+                "Expected executable was not generated: " +
+                $ExecutablePath
+              )
+            }
+
+            $Executable = Get-Item $ExecutablePath
+
+            if ($Executable.Length -eq 0) {
+              throw (
+                "Generated executable is empty: " +
+                $ExecutablePath
+              )
+            }
+
+            Write-Host (
+              "$($Executable.Name): " +
+              "$($Executable.Length) bytes"
             )
           }
 
-          $Executable = Get-Item $ExecutablePath
-
-          if ($Executable.Length -eq 0) {
-            throw "The standalone Windows executable is empty."
-          }
-
-          Write-Host "Generated executable:"
-          Write-Host "Path: $($Executable.FullName)"
-          Write-Host "Size: $($Executable.Length) bytes"
-
-      - name: Run executable smoke test
+      - name: Test recorder CLI executable
         shell: pwsh
         run: |
-          $ExecutablePath = Resolve-Path "dist/autoscreenrec.exe"
+          & ".\dist\autoscreenrec.exe" --help
 
+          if ($LASTEXITCODE -ne 0) {
+            throw (
+              "Recorder CLI smoke test failed with " +
+              "exit code $LASTEXITCODE."
+            )
+          }
+
+      - name: Test REST API executable
+        shell: pwsh
+        run: |
           $Process = Start-Process `
-            -FilePath $ExecutablePath `
-            -ArgumentList "--help" `
-            -NoNewWindow `
+            -FilePath ".\dist\autoscreenrec-http.exe" `
+            -ArgumentList @(
+              "--host",
+              "127.0.0.1",
+              "--port",
+              "18765"
+            ) `
             -PassThru `
-            -Wait
+            -NoNewWindow
 
-          if ($Process.ExitCode -ne 0) {
-            throw (
-              "The executable smoke test failed with " +
-              "exit code $($Process.ExitCode)."
-            )
+          try {
+            $Started = $false
+
+            for ($Attempt = 1; $Attempt -le 20; $Attempt++) {
+              Start-Sleep -Milliseconds 500
+
+              try {
+                $Response = Invoke-RestMethod `
+                  -Uri "http://127.0.0.1:18765/recordings/status" `
+                  -Method Get `
+                  -TimeoutSec 2
+
+                $Started = $true
+                break
+              }
+              catch {
+                Write-Host (
+                  "Waiting for REST API, attempt " +
+                  "$Attempt..."
+                )
+              }
+            }
+
+            if (-not $Started) {
+              throw (
+                "The REST API did not become available."
+              )
+            }
+
+            Write-Host "REST API status response:"
+            $Response |
+              ConvertTo-Json -Depth 10 |
+              Write-Host
+          }
+          finally {
+            if (-not $Process.HasExited) {
+              Stop-Process `
+                -Id $Process.Id `
+                -Force
+            }
           }
 
       - name: Determine release version
@@ -187,57 +260,62 @@ jobs:
             -Force |
             Out-Null
 
-          $ReleaseExecutable = (
-            "autoscreenrec-" +
-            $Version +
-            "-windows-x64.exe"
-          )
-
           Copy-Item `
             -Path "dist/autoscreenrec.exe" `
             -Destination (
-              Join-Path "release" $ReleaseExecutable
+              "release/autoscreenrec-" +
+              $Version +
+              "-windows-x64.exe"
             )
 
-          Write-Host (
-            "Release executable: " +
-            $ReleaseExecutable
-          )
+          Copy-Item `
+            -Path "dist/autoscreenrec-http.exe" `
+            -Destination (
+              "release/autoscreenrec-http-" +
+              $Version +
+              "-windows-x64.exe"
+            )
 
-      - name: Create SHA-256 checksum
+      - name: Create SHA-256 checksums
         shell: pwsh
         run: |
-          $Executable = Get-ChildItem `
-            -Path "release" `
-            -Filter "*.exe" `
-            -File |
-            Select-Object -First 1
+          $Executables = @(
+            Get-ChildItem `
+              -Path "release" `
+              -Filter "*.exe" `
+              -File
+          )
 
-          if (-not $Executable) {
-            throw "No release executable was found."
+          if ($Executables.Count -ne 2) {
+            throw (
+              "Expected exactly two release executables, " +
+              "but found $($Executables.Count)."
+            )
           }
 
-          $Hash = Get-FileHash `
-            -Path $Executable.FullName `
-            -Algorithm SHA256
+          foreach ($Executable in $Executables) {
+            $Hash = Get-FileHash `
+              -Path $Executable.FullName `
+              -Algorithm SHA256
 
-          $ChecksumLine = (
-            $Hash.Hash.ToLowerInvariant() +
-            "  " +
-            $Executable.Name
-          )
+            $ChecksumLine = (
+              $Hash.Hash.ToLowerInvariant() +
+              "  " +
+              $Executable.Name
+            )
 
-          $ChecksumPath = (
-            $Executable.FullName +
-            ".sha256"
-          )
+            $ChecksumPath = (
+              $Executable.FullName +
+              ".sha256"
+            )
 
-          Set-Content `
-            -Path $ChecksumPath `
-            -Value $ChecksumLine `
-            -Encoding ascii
+            Set-Content `
+              -Path $ChecksumPath `
+              -Value $ChecksumLine `
+              -Encoding ascii
 
-          Get-Content $ChecksumPath
+            Write-Host $ChecksumLine
+          }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
@@ -285,17 +363,12 @@ jobs:
           "tag=$ReleaseTag" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        if: >
-          github.ref_type == 'tag' ||
-          (
-            github.event_name == 'workflow_dispatch' &&
-            inputs.create_release
-          )
+        if: github.ref_type == 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $ReleaseTag = "${{ steps.release.outputs.tag }}"
+          $ReleaseTag = "${{ github.ref_name }}"
 
           $Assets = @(
             Get-ChildItem `
@@ -304,38 +377,9 @@ jobs:
             Select-Object -ExpandProperty FullName
           )
 
-          if ($Assets.Count -lt 2) {
-            throw (
-              "Expected the executable and checksum " +
-              "before creating the release."
-            )
-          }
-
-          $ExistingRelease = gh release view `
+          gh release create `
             $ReleaseTag `
-            --json tagName `
-            2>$null
-
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host (
-              "Release $ReleaseTag already exists. " +
-              "Uploading current assets."
-            )
-
-            gh release upload `
-              $ReleaseTag `
-              $Assets `
-              --clobber
-          }
-          else {
-            Write-Host (
-              "Creating GitHub Release $ReleaseTag."
-            )
-
-            gh release create `
-              $ReleaseTag `
-              $Assets `
-              --verify-tag `
-              --generate-notes `
-              --title $ReleaseTag
-          }
+            $Assets `
+            --verify-tag `
+            --generate-notes `
+            --title $ReleaseTag

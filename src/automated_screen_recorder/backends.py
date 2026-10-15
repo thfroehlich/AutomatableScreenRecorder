@@ -175,7 +175,7 @@ class FfmpegBackend:
         self._stderr = tempfile.TemporaryFile(mode="w+b")
         try:
             self._process = subprocess.Popen(
-                self.command(config, display, target),
+                args=self.command(config, display, target),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=self._stderr,
