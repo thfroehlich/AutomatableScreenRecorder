@@ -100,9 +100,9 @@ class RecordingConfig(BaseModel):
             return value
         configured_interval = value.get("interval_seconds")
         if configured_interval is not None and configured_interval != legacy_interval:
-            raise ValueError(
-                "save_interval_seconds and interval_seconds must match when both are provided."
-            )
+            msg = ("save_interval_seconds and interval_seconds must match "
+                   "when both are provided.")
+            raise ValueError(msg)
         configured_mode = value.get("mode", RecordingMode.NORMAL)
         if configured_mode not in {
             RecordingMode.NORMAL,
