@@ -1,4 +1,4 @@
-"""Validated public models."""
+"""Validated public models for recording modes and API payloads."""
 
 from __future__ import annotations
 
@@ -8,8 +8,16 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+class RecordingMode(StrEnum):
+    """Supported recording strategies."""
+
+    NORMAL = "normal"
+    INTERVAL = "interval"
+    REPLAY = "replay"
+
+
 class RecordingState(StrEnum):
-    """Lifecycle states for one recording session."""
+    """Lifecycle states for one recorder instance."""
 
     IDLE = "idle"
     RECORDING = "recording"
@@ -21,7 +29,7 @@ class RecordingState(StrEnum):
 
 
 class OutputFormat(StrEnum):
-    """Supported video containers."""
+    """Supported output containers."""
 
     MP4 = "mp4"
     MKV = "mkv"
@@ -36,9 +44,10 @@ class VideoCodec(StrEnum):
 
 
 class DisplayInfo(BaseModel):
-    """Display geometry in Windows virtual-screen coordinates."""
+    """Windows display geometry."""
 
     model_config = ConfigDict(frozen=True)
+
     index: int = Field(ge=0)
     name: str
     left: int
@@ -49,10 +58,12 @@ class DisplayInfo(BaseModel):
 
 
 class RecordingConfig(BaseModel):
-    """Immutable recording configuration."""
+    """Immutable recording configuration shared by CLI, API, and service."""
 
     model_config = ConfigDict(frozen=True)
+
     output_path: Path
+    mode: RecordingMode = RecordingMode.NORMAL
     display_index: int = Field(default=0, ge=0)
     frame_rate: int = Field(default=30, ge=1, le=120)
     width: int | None = Field(default=None, ge=16, le=16384)
@@ -64,21 +75,39 @@ class RecordingConfig(BaseModel):
     ffmpeg_path: Path | None = None
     encoder_preset: str = "veryfast"
     stop_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
-    save_interval_seconds: float | None = Field(default=None, ge=0.1, le=86400.0)
+    interval_seconds: float | None = Field(default=None, ge=1.0, le=86400.0)
+    replay_buffer_seconds: float = Field(default=60.0, ge=5.0, le=3600.0)
+    replay_segment_seconds: float = Field(default=2.0, ge=0.5, le=30.0)
 
     @field_validator("output_path")
     @classmethod
-    def absolute_output(cls, value: Path) -> Path:
+    def require_absolute_output(cls, value: Path) -> Path:
+        """Require a deterministic absolute destination path."""
         if not value.is_absolute():
             raise ValueError("Output path must be absolute.")
         return value
 
     @model_validator(mode="after")
-    def validate_configuration(self) -> RecordingConfig:
+    def validate_mode_specific_settings(self) -> RecordingConfig:
+        """Reject ambiguous combinations before any process starts."""
         if (self.width is None) != (self.height is None):
             raise ValueError("Width and height must be provided together.")
         if self.output_path.suffix.lower() != f".{self.output_format.value}":
             raise ValueError("Output path suffix must match output format.")
+        if self.mode is RecordingMode.INTERVAL and self.interval_seconds is None:
+            raise ValueError("Interval mode requires interval_seconds.")
+        if (
+            self.mode is not RecordingMode.INTERVAL
+            and self.interval_seconds is not None
+        ):
+            raise ValueError("interval_seconds is only valid in interval mode.")
+        if (
+            self.mode is RecordingMode.REPLAY
+            and self.replay_segment_seconds > self.replay_buffer_seconds
+        ):
+            raise ValueError(
+                "replay_segment_seconds cannot exceed replay_buffer_seconds."
+            )
         return self
 
 
@@ -87,20 +116,21 @@ class RecordingStatus(BaseModel):
 
     session_id: str | None = None
     state: RecordingState = RecordingState.IDLE
+    mode: RecordingMode | None = None
     started_at: str | None = None
-    elapsed_seconds: float = Field(default=0, ge=0)
-    captured_frames: int | None = None
-    dropped_frames: int | None = None
+    elapsed_seconds: float = Field(default=0.0, ge=0)
+    buffered_seconds: float = Field(default=0.0, ge=0)
+    saved_output_paths: list[Path] = Field(default_factory=list)
+    next_rotation_in_seconds: float | None = Field(default=None, ge=0)
     backend: str | None = None
     error: str | None = None
-    saved_output_paths: list[Path] = Field(default_factory=list)
-    next_interval_save_in_seconds: float | None = Field(default=None, ge=0)
 
 
 class RecordingResult(BaseModel):
-    """Result returned after a successful save."""
+    """Result returned for normal, interval, or replay saves."""
 
     session_id: str
+    mode: RecordingMode
     output_path: Path
     output_paths: list[Path]
     duration_seconds: float = Field(ge=0)
@@ -125,12 +155,18 @@ class StartRequest(BaseModel):
 
 
 class ControlRequest(BaseModel):
-    """HTTP control request with an idempotency key."""
+    """HTTP state-changing request with an idempotency key."""
 
     request_id: str = Field(min_length=8, max_length=128)
 
 
 class SaveRequest(ControlRequest):
-    """HTTP save request."""
+    """HTTP final-save request."""
+
+    output_path: Path | None = None
+
+
+class SaveReplayRequest(ControlRequest):
+    """HTTP replay-buffer save request."""
 
     output_path: Path | None = None

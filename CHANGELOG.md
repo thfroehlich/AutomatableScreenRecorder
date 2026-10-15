@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 - 2026-10-15
+
+- Added explicit `normal`, `interval`, and `replay` recording modes.
+- Added a rolling replay buffer with a 60-second default window.
+- Added `save_replay_buffer()` for retrospective on-demand capture.
+- Added interactive replay CLI commands.
+- Added `POST /recordings/save-replay` to the REST API.
+- Added replay-aware status and result fields.
+- Added bounded temporary segment retention.
+- Added tests and documentation for all three modes.
+
+
 ## 0.3.0 - 2026-10-14
 
 - Added optional `save_interval_seconds` configuration.

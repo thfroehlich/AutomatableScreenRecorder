@@ -4,16 +4,26 @@ build-backend = "hatchling.build"
 
 [project]
 name = "automated-screen-recorder"
-version = "0.3.0"
-description = "Local, video-only Windows screen recording with optional interval saving"
+version = "0.4.0"
+description = "Local video-only Windows screen recording with normal, interval, and replay modes"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 dependencies = ["pydantic>=2.10,<3"]
 
 [project.optional-dependencies]
 http = ["fastapi>=0.143,<1", "uvicorn>=0.54,<1"]
-dev = ["build>=1.2,<2", "httpx>=0.28,<1", "mypy>=1.13,<2", "pkginfo>=1.13,<2", "pyinstaller>=6.22,<7", "pytest>=8.3,<9", "pytest-cov>=7.1,<8", "ruff>=0.17,<0.18", "twine>=7,<8"]
+dev = [
+  "build>=1.2,<2",
+  "httpx2>=2.13,<3",
+  "mypy>=1.13,<2",
+  "pkginfo>=1.13,<2",
+  "pyinstaller>=6.22,<7",
+  "pytest>=8.3,<9",
+  "pytest-cov>=7.1,<8",
+  "ruff>=0.17,<0.18",
+  "twine>=7,<8",
+]
 
 [project.scripts]
 autoscreenrec = "automated_screen_recorder.cli:main"

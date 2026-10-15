@@ -1,4 +1,6 @@
-"""Windows display enumeration isolated from portable code."""
+"""Windows display enumeration isolated from portable service code."""
+
+from __future__ import annotations
 
 import ctypes
 import sys
@@ -26,54 +28,38 @@ def enumerate_displays() -> list[DisplayInfo]:
 
     user32 = ctypes.windll.user32
     displays: list[DisplayInfo] = []
-
-    rect_pointer_type = ctypes.POINTER(wintypes.RECT)
-
-    monitor_proc_type = ctypes.WINFUNCTYPE(
+    monitor_callback_type = ctypes.WINFUNCTYPE(
         ctypes.c_int,
         wintypes.HMONITOR,
         wintypes.HDC,
-        rect_pointer_type,
+        ctypes.POINTER(wintypes.RECT),
         wintypes.LPARAM,
     )
 
     def callback(
         _monitor: wintypes.HMONITOR,
-        _dc: wintypes.HDC,
-        rect_ptr: Any,
+        _device_context: wintypes.HDC,
+        rectangle_pointer: Any,
         _data: wintypes.LPARAM,
     ) -> int:
-        rect = ctypes.cast(
-            rect_ptr,
-            rect_pointer_type,
-        ).contents
-
+        rectangle = rectangle_pointer.contents
         index = len(displays)
-
         displays.append(
             DisplayInfo(
                 index=index,
                 name=f"Display {index}",
-                left=rect.left,
-                top=rect.top,
-                width=rect.right - rect.left,
-                height=rect.bottom - rect.top,
-                primary=rect.left == 0 and rect.top == 0,
+                left=rectangle.left,
+                top=rectangle.top,
+                width=rectangle.right - rectangle.left,
+                height=rectangle.bottom - rectangle.top,
+                primary=rectangle.left == 0 and rectangle.top == 0,
             )
         )
         return 1
 
-    callback_function = monitor_proc_type(callback)
-
-    if not user32.EnumDisplayMonitors(
-        None,
-        None,
-        callback_function,
-        0,
-    ):
+    callback_function = monitor_callback_type(callback)
+    if not user32.EnumDisplayMonitors(None, None, callback_function, 0):
         raise DisplayUnavailableError("Windows display enumeration failed.")
-
     if not displays:
         raise DisplayUnavailableError("No active display was found.")
-
     return displays

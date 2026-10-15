@@ -1,4 +1,4 @@
-"""Secure temporary and final output handling."""
+"""Private temporary storage and atomic final output handling."""
 
 from __future__ import annotations
 
@@ -11,43 +11,49 @@ from automated_screen_recorder.exceptions import OutputPathError, SaveError
 
 
 class RecordingStorage:
-    """Own private session artifacts and atomic final commits."""
+    """Own all temporary artifacts for one recording session."""
 
     def __init__(self) -> None:
         self._directory: Path | None = None
-        self._segments: list[Path] = []
-
-    @property
-    def segments(self) -> list[Path]:
-        return list(self._segments)
+        self._counter = 0
 
     def create_session(self) -> None:
+        """Create a new private session directory."""
         self.cleanup()
         self._directory = Path(tempfile.mkdtemp(prefix="autoscreenrec-"))
+        self._counter = 0
 
     def create_segment(self, suffix: str) -> Path:
-        if self._directory is None:
-            raise SaveError("Temporary recording storage is unavailable.")
-        path = self._directory / f"segment-{len(self._segments):06d}{suffix}"
-        self._segments.append(path)
+        """Allocate a unique temporary segment path."""
+        directory = self._require_directory()
+        path = directory / f"segment-{self._counter:08d}{suffix}"
+        self._counter += 1
         return path
 
-    def remove_segment(self, path: Path) -> None:
-        path.unlink(missing_ok=True)
-        if path in self._segments:
-            self._segments.remove(path)
-
     def create_assembled(self, suffix: str) -> Path:
-        if self._directory is None:
-            raise SaveError("Temporary recording storage is unavailable.")
-        return self._directory / f"assembled{suffix}"
+        """Allocate an assembled-output staging path."""
+        directory = self._require_directory()
+        path = directory / f"assembled-{self._counter:08d}{suffix}"
+        self._counter += 1
+        return path
 
-    def interval_destination(self, base: Path, index: int) -> Path:
+    @staticmethod
+    def interval_destination(base: Path, index: int) -> Path:
+        """Return the numbered destination for interval mode."""
         return base.with_name(f"{base.stem}.part{index:06d}{base.suffix}")
 
+    @staticmethod
+    def replay_destination(base: Path, index: int) -> Path:
+        """Return a collision-resistant numbered replay destination."""
+        return base.with_name(f"{base.stem}.replay{index:06d}{base.suffix}")
+
     def validate_destination(
-        self, path: Path, overwrite: bool, create_directory: bool
+        self,
+        path: Path,
+        overwrite: bool,
+        create_directory: bool,
     ) -> None:
+        """Validate destination policy without creating the final file."""
         if not path.is_absolute():
             raise OutputPathError("Output path must be absolute.")
         parent = path.parent
@@ -66,17 +72,18 @@ class RecordingStorage:
             raise OutputPathError("Output file already exists.")
 
     def commit(self, source: Path, destination: Path, overwrite: bool) -> None:
+        """Commit a file through same-directory staging."""
         if not source.is_file():
             raise SaveError("Temporary recording is missing.")
         staging: Path | None = None
         try:
-            descriptor, name = tempfile.mkstemp(
+            descriptor, staging_name = tempfile.mkstemp(
                 prefix=f".{destination.name}.",
                 suffix=".tmp",
                 dir=destination.parent,
             )
             os.close(descriptor)
-            staging = Path(name)
+            staging = Path(staging_name)
             shutil.copyfile(source, staging)
             if overwrite:
                 os.replace(staging, destination)
@@ -92,14 +99,25 @@ class RecordingStorage:
             if isinstance(error, OutputPathError):
                 raise
             raise SaveError(
-                "Recording could not be saved to the output path."
+                "Recording could not be committed to the output path."
             ) from error
 
+    @staticmethod
+    def remove(path: Path) -> None:
+        """Remove one temporary artifact if present."""
+        path.unlink(missing_ok=True)
+
     def cleanup(self) -> None:
-        if self._directory and self._directory.exists():
+        """Delete all temporary artifacts owned by the session."""
+        if self._directory is not None and self._directory.exists():
             try:
                 shutil.rmtree(self._directory)
             except OSError as error:
                 raise SaveError("Temporary recording cleanup failed.") from error
         self._directory = None
-        self._segments = []
+        self._counter = 0
+
+    def _require_directory(self) -> Path:
+        if self._directory is None:
+            raise SaveError("Temporary recording storage is unavailable.")
+        return self._directory

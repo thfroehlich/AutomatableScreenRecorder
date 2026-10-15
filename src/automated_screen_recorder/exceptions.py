@@ -6,40 +6,32 @@ class RecorderError(Exception):
 
 
 class InvalidConfigurationError(RecorderError):
-    """Configuration is invalid."""
+    """Configuration cannot be used by the recorder."""
 
 
 class InvalidStateTransitionError(RecorderError):
-    """State transition is invalid."""
-
-
-class CaptureInitializationError(RecorderError):
-    """Capture initialization failed."""
-
-
-class EncoderInitializationError(RecorderError):
-    """Encoder initialization failed."""
+    """Lifecycle operation is invalid for the current state."""
 
 
 class DisplayUnavailableError(RecorderError):
-    """Display is unavailable."""
+    """Selected display is unavailable."""
 
 
 class OutputPathError(RecorderError):
-    """Output path is unusable."""
+    """Output path cannot be used safely."""
 
 
 class RecordingError(RecorderError):
-    """Recording failed."""
+    """Recording operation failed."""
 
 
 class SaveError(RecorderError):
-    """Recording save failed."""
+    """Recording could not be persisted."""
 
 
 class CancellationError(RecorderError):
-    """Cancellation failed."""
+    """Cancellation did not complete cleanly."""
 
 
 class ExternalProcessError(RecorderError):
-    """External process failed."""
+    """FFmpeg or another external helper failed."""

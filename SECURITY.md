@@ -31,6 +31,8 @@ Automated Screen Recorder is designed around the following boundaries:
 
 The optional HTTP adapter is unauthenticated and intended for local automation. The default binding is loopback.
 
+Replay mode continuously writes short-lived local temporary video segments.
+
 Do not expose the HTTP adapter to an untrusted network. If a deployment intentionally changes the binding beyond localhost, network access controls and authentication must be provided outside this project.
 
 ## Recordings and sensitive information

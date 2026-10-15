@@ -1,4 +1,4 @@
-"""Entry point for the standalone Windows application."""
+"""PyInstaller entry point for the recorder CLI."""
 
 from automated_screen_recorder.cli import main
 

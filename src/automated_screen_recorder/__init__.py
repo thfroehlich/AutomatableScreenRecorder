@@ -2,9 +2,7 @@
 
 from automated_screen_recorder.exceptions import (
     CancellationError,
-    CaptureInitializationError,
     DisplayUnavailableError,
-    EncoderInitializationError,
     ExternalProcessError,
     InvalidConfigurationError,
     InvalidStateTransitionError,
@@ -17,6 +15,7 @@ from automated_screen_recorder.models import (
     DisplayInfo,
     OutputFormat,
     RecordingConfig,
+    RecordingMode,
     RecordingResult,
     RecordingState,
     RecordingStatus,
@@ -26,10 +25,8 @@ from automated_screen_recorder.service import ScreenRecorder
 
 __all__ = [
     "CancellationError",
-    "CaptureInitializationError",
     "DisplayInfo",
     "DisplayUnavailableError",
-    "EncoderInitializationError",
     "ExternalProcessError",
     "InvalidConfigurationError",
     "InvalidStateTransitionError",
@@ -38,6 +35,7 @@ __all__ = [
     "RecorderError",
     "RecordingConfig",
     "RecordingError",
+    "RecordingMode",
     "RecordingResult",
     "RecordingState",
     "RecordingStatus",
@@ -45,4 +43,4 @@ __all__ = [
     "ScreenRecorder",
     "VideoCodec",
 ]
-__version__ = "0.3.2"
+__version__ = "0.4.0"
